@@ -71,6 +71,12 @@ ui/          → Main app screens (Home, Settings, Memory viewer, Model download
   → Double tap → Dismiss pet
 ```
 
+## Marketing site (Vercel)
+
+The landing page is a **Next.js** app in [`website/`](website/). On Vercel, open **Project → Settings → General → Root Directory**, set it to **`website`**, then redeploy. If Root Directory stays at the repository root, Vercel will not run `next build` for this app and you may see **404 NOT_FOUND**.
+
+Add **`APP_LINK`** or **`APK_LINK`** (and any `NEXT_PUBLIC_*` vars you use) under **Settings → Environment Variables** for production.
+
 ## Voice Models
 
 Download STT/TTS models from the Voice Models screen. Models are stored locally and run offline via Sherpa-ONNX.
