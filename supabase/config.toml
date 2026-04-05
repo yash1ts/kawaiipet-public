@@ -5,6 +5,22 @@ project_id = "iutndoomufkwzilxjfhz"
 [api]
 enabled = true
 
+[auth]
+enabled = true
+site_url = "com.kawaiipet.app://auth-callback"
+
+[auth.email]
+enable_confirmations = false
+max_frequency = "1m0s"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[storage]
+file_size_limit = "200MiB"
+
 # Per-function config (global [functions].verify_jwt is no longer valid in current CLI).
 # JWT is still verified inside chat/extract-facts via auth.getUser(); gateway JWT check stays off so the client Authorization header reaches the function.
 [functions.chat]

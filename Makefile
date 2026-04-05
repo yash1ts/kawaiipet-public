@@ -5,10 +5,12 @@
 #   # fill SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY + bucket/path
 #
 # Usage:
-#   make assemble-apk    # build release APK (Gradle)
-#   make copy-apk        # copy newest release APK -> dist/kawaiipet.apk
-#   make upload-apk      # copy + upload to Supabase Storage
-#   make print-apk-url   # print public URL (after upload; bucket must be public)
+#   make assemble-apk              # build release APK (Gradle)
+#   make copy-apk                  # copy newest release APK -> dist/kawaiipet.apk
+#   make upload-apk                # copy + upload to Supabase Storage
+#   make print-apk-url             # print public URL (after upload; bucket must be public)
+#   make deploy-supabase-functions # deploy Edge Functions (chat, extract-facts) to linked project
+#   # without link: SUPABASE_PROJECT_REF=... make deploy-supabase-functions
 #
 # Supabase: create a Storage bucket (e.g. "apk"), add policy for public read on that path
 # if you want the link to work without signed URLs. Upload uses the service role key
@@ -24,9 +26,15 @@ DIST_APK := $(DIST_DIR)/kawaiipet.apk
 # Optional defaults; required vars checked in verify-upload-env.
 SUPABASE_APK_OBJECT_PATH ?= releases/kawaiipet.apk
 
+# Edge Functions: names under supabase/functions/
+SUPABASE_EDGE_FUNCTIONS ?= chat extract-facts
+SUPABASE_CLI ?= npx --yes supabase@latest
+# Set when the CLI is not linked (e.g. CI): SUPABASE_PROJECT_REF=iutndoomufkwzilxjfhz
+SUPABASE_PROJECT_REF ?=
+
 .DEFAULT_GOAL := help
 
-.PHONY: help assemble-apk copy-apk upload-apk print-apk-url verify-upload-env
+.PHONY: help assemble-apk copy-apk upload-apk print-apk-url verify-upload-env deploy-supabase-functions
 
 help:
 	@echo "Targets:"
@@ -34,6 +42,7 @@ help:
 	@echo "  make copy-apk       Copy newest $(APK_RELEASE_DIR)/*.apk -> $(DIST_APK)"
 	@echo "  make upload-apk     copy-apk + upload to Supabase Storage"
 	@echo "  make print-apk-url  Echo public object URL (bucket must allow public read)"
+	@echo "  make deploy-supabase-functions  Deploy Edge Functions ($(SUPABASE_EDGE_FUNCTIONS))"
 	@echo ""
 	@echo "Config: apk-upload.env (see apk-upload.env.example)"
 
@@ -73,3 +82,6 @@ upload-apk: copy-apk verify-upload-env
 print-apk-url:
 	@echo "Public download URL (requires bucket/prefix to be publicly readable):"
 	@echo "$(SUPABASE_URL)/storage/v1/object/public/$(SUPABASE_STORAGE_BUCKET)/$(SUPABASE_APK_OBJECT_PATH)"
+
+deploy-supabase-functions:
+	@$(SUPABASE_CLI) functions deploy $(SUPABASE_EDGE_FUNCTIONS) --yes $(if $(strip $(SUPABASE_PROJECT_REF)),--project-ref $(SUPABASE_PROJECT_REF),)

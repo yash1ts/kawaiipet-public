@@ -5,7 +5,7 @@ import { StoreDownloadButtons } from "./StoreDownloadButtons";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
-import { MessageCircle, Smartphone, Sparkles } from "lucide-react";
+import { CalendarCheck, Hand, Heart } from "lucide-react";
 
 type LandingPageProps = {
   apkHref: string | null;
@@ -25,19 +25,19 @@ const fadeUp = {
 
 const features = [
   {
-    title: "Pet on your screen",
-    body: "A companion overlay you can keep with you while you use other apps.",
-    icon: Smartphone,
+    title: "Interact, don't just text",
+    body: "Poke, pet, and play with your companion through touch—no keyboard needed.",
+    icon: Hand,
   },
   {
-    title: "Talk or type",
-    body: "Chat by voice or text so your pet can listen and respond when you need it.",
-    icon: MessageCircle,
+    title: "A real connection",
+    body: "More than a toy. A little creature that remembers you and grows closer over time.",
+    icon: Heart,
   },
   {
-    title: "Make it yours",
-    body: "Name your pet, tune personality, and customize how it feels on your phone.",
-    icon: Sparkles,
+    title: "Checks on you daily",
+    body: "Your pet reaches out every day—a gentle nudge to pause, reflect, and feel seen.",
+    icon: CalendarCheck,
   },
 ];
 
@@ -128,7 +128,7 @@ export function LandingPage({ apkHref, githubUrl }: LandingPageProps) {
         <section id="features" className="relative border-t border-slate-200/50 bg-transparent py-20">
           <div className="mx-auto max-w-5xl px-4 sm:px-6">
             <h2 className="mb-12 text-center text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
-              Built for quick hellos and longer hangs
+              A companion that actually cares
             </h2>
             <ul className="grid gap-6 sm:grid-cols-3">
               {features.map((f, i) => {

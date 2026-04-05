@@ -46,12 +46,7 @@ fun SignUpScreen(
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorText by remember { mutableStateOf<String?>(null) }
-    var infoText by remember { mutableStateOf<String?>(null) }
-    var resendNotice by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var resendBusy by remember { mutableStateOf(false) }
-    val checkEmailMessage = stringResource(R.string.auth_signup_check_email)
-    val resendDoneMessage = stringResource(R.string.auth_resend_confirmation_done)
 
     Scaffold(
         topBar = {
@@ -85,8 +80,6 @@ fun SignUpScreen(
                 onValueChange = {
                     email = it
                     errorText = null
-                    infoText = null
-                    resendNotice = null
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.email)) },
@@ -96,7 +89,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it; errorText = null; infoText = null },
+                onValueChange = { password = it; errorText = null },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.password)) },
                 visualTransformation = PasswordVisualTransformation(),
@@ -106,7 +99,7 @@ fun SignUpScreen(
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = confirmPassword,
-                onValueChange = { confirmPassword = it; errorText = null; infoText = null },
+                onValueChange = { confirmPassword = it; errorText = null },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.confirm_password)) },
                 visualTransformation = PasswordVisualTransformation(),
@@ -118,7 +111,6 @@ fun SignUpScreen(
             Button(
                 onClick = {
                     errorText = null
-                    infoText = null
                     when {
                         email.isBlank() || password.isBlank() -> {
                             errorText = "Enter email and password"
@@ -134,13 +126,7 @@ fun SignUpScreen(
                             viewModel.signUp(email, password) { result ->
                                 busy = false
                                 result.fold(
-                                    onSuccess = { hasSession ->
-                                        if (hasSession) {
-                                            onAuthenticated()
-                                        } else {
-                                            infoText = checkEmailMessage
-                                        }
-                                    },
+                                    onSuccess = { onAuthenticated() },
                                     onFailure = { errorText = it.message ?: it.toString() },
                                 )
                             }
@@ -162,44 +148,6 @@ fun SignUpScreen(
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                 )
-            }
-            infoText?.let { info ->
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = info,
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                TextButton(
-                    onClick = {
-                        if (email.isBlank()) {
-                            errorText = "Enter the email you signed up with"
-                            return@TextButton
-                        }
-                        errorText = null
-                        resendNotice = null
-                        resendBusy = true
-                        viewModel.resendSignupConfirmation(email) { result ->
-                            resendBusy = false
-                            result.fold(
-                                onSuccess = { resendNotice = resendDoneMessage },
-                                onFailure = { errorText = it.message ?: it.toString() },
-                            )
-                        }
-                    },
-                    enabled = !busy && !resendBusy,
-                ) {
-                    Text(stringResource(R.string.auth_resend_confirmation))
-                }
-                resendNotice?.let { notice ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = notice,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

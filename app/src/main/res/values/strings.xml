@@ -18,12 +18,9 @@
     <string name="auth_login_title">Log in</string>
     <string name="auth_login_subtitle">Welcome back — enter your email and password.</string>
     <string name="auth_signup_title">Create account</string>
-    <string name="auth_signup_subtitle">Choose an email and password. You may need to confirm your email before logging in.</string>
+    <string name="auth_signup_subtitle">Choose an email and password to get started.</string>
     <string name="auth_switch_to_signup">Need an account? Sign up</string>
     <string name="auth_switch_to_login">Already have an account? Log in</string>
-    <string name="auth_signup_check_email">We sent a confirmation email. Check spam and promotions. Open the link on this phone with Kawaii Pet installed—the app will sign you in. If you opened the link on another device, you can still use Log in with the same email and password once verified.</string>
-    <string name="auth_resend_confirmation">Resend confirmation email</string>
-    <string name="auth_resend_confirmation_done">If that email is registered, a new confirmation message was sent.</string>
     <string name="confirm_password">Confirm password</string>
     <string name="account_sign_in_hint">Sign in so your pet can use the cloud assistant (Supabase + Gemini).</string>
     <string name="email">Email</string>
