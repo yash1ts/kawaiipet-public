@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.media.audiofx.NoiseSuppressor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
@@ -11,35 +12,43 @@ import kotlinx.coroutines.withContext
 class AudioRecordManager {
 
     private var audioRecord: AudioRecord? = null
+    private var noiseSuppressor: NoiseSuppressor? = null
     private var isRecording = false
 
-    val sampleRate = SAMPLE_RATE
+    val sampleRate = SttEngineConfig.SAMPLE_RATE
+
     val bufferSize: Int
         get() = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE,
+            sampleRate,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
-        ).coerceAtLeast(SAMPLE_RATE) // At least 1 second of buffer
+        ).coerceAtLeast(sampleRate)
 
     @SuppressLint("MissingPermission")
     fun start(): Boolean {
         if (isRecording) return true
 
         val minBuf = AudioRecord.getMinBufferSize(
-            SAMPLE_RATE,
+            sampleRate,
             AudioFormat.CHANNEL_IN_MONO,
             AudioFormat.ENCODING_PCM_16BIT
         )
         if (minBuf == AudioRecord.ERROR_BAD_VALUE || minBuf == AudioRecord.ERROR) return false
 
+        val bufBytes = (minBuf * BUFFER_MULTIPLIER).coerceAtLeast(minBuf)
+
         val record = try {
-            AudioRecord(
-                MediaRecorder.AudioSource.MIC,
-                SAMPLE_RATE,
-                AudioFormat.CHANNEL_IN_MONO,
-                AudioFormat.ENCODING_PCM_16BIT,
-                minBuf * 2
-            )
+            AudioRecord.Builder()
+                .setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setSampleRate(sampleRate)
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setChannelMask(AudioFormat.CHANNEL_IN_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(bufBytes)
+                .build()
         } catch (_: SecurityException) {
             return false
         }
@@ -59,6 +68,18 @@ class AudioRecordManager {
             audioRecord = null
             return false
         }
+
+        if (NoiseSuppressor.isAvailable()) {
+            try {
+                noiseSuppressor = NoiseSuppressor.create(record.audioSessionId)?.apply {
+                    enabled = true
+                }
+            } catch (_: Exception) {
+                noiseSuppressor?.release()
+                noiseSuppressor = null
+            }
+        }
+
         isRecording = true
         return true
     }
@@ -76,6 +97,11 @@ class AudioRecordManager {
     fun stop() {
         isRecording = false
         try {
+            noiseSuppressor?.release()
+        } catch (_: Exception) {
+        }
+        noiseSuppressor = null
+        try {
             audioRecord?.stop()
         } catch (_: IllegalStateException) { }
         audioRecord?.release()
@@ -87,7 +113,7 @@ class AudioRecordManager {
     }
 
     companion object {
-        const val SAMPLE_RATE = 16000
-        private const val CHUNK_SIZE = 3200 // 200ms at 16kHz
+        private const val CHUNK_SIZE = 3200
+        private const val BUFFER_MULTIPLIER = 3
     }
 }

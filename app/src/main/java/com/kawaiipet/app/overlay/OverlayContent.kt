@@ -67,8 +67,13 @@ fun OverlayContent(
                         enter = fadeIn(animationSpec = tween(120)) + slideInVertically(animationSpec = tween(180)) { -it },
                         exit = fadeOut(animationSpec = tween(100)) + slideOutVertically(animationSpec = tween(140)) { -it }
                     ) {
+                        val bubbleText = when {
+                            responseText.isNotBlank() -> responseText
+                            state is OverlayState.Speaking -> "…"
+                            else -> ""
+                        }
                         ChatBubble(
-                            text = responseText,
+                            text = bubbleText,
                             modifier = Modifier.widthIn(max = 200.dp)
                         )
                     }

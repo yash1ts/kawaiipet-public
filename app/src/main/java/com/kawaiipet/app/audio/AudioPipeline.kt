@@ -11,8 +11,10 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
@@ -37,6 +39,7 @@ class AudioPipeline(
 
     private var recordJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
+    private val sttInputCleaner = SttInputCleaner()
 
     /** One-shot load of STT+TTS for the current pet session; see [schedulePetVoiceModelPrepare]. */
     private var petVoicePrepareJob: Job? = null
@@ -122,6 +125,7 @@ class AudioPipeline(
 
     private suspend fun listenWithSherpa(timeoutMs: Long): String {
         stt.startStream()
+        sttInputCleaner.reset()
         if (!recorder.start()) return ""
 
         val result = CompletableDeferred<String>()
@@ -130,7 +134,7 @@ class AudioPipeline(
 
         recordJob = scope.launch {
             recorder.readLoop { samples ->
-                val floatSamples = samples.map { it.toFloat() / Short.MAX_VALUE }.toFloatArray()
+                val floatSamples = sttInputCleaner.cleanPcm16ToFloat(samples)
                 stt.acceptWaveform(floatSamples)
 
                 if (hasSpeechHint && stt.isEndpoint()) {
@@ -285,7 +289,15 @@ class AudioPipeline(
         if (speechDetected) "[voice]" else ""
     }
 
-    suspend fun speak(text: String) {
+    /**
+     * Streams TTS audio (low latency: playback starts while later sentences synthesize).
+     * [onRevealed] runs in parallel with a bounded-time character ramp so the bubble animates without
+     * blocking synthesis or playback.
+     */
+    suspend fun speak(
+        text: String,
+        onRevealed: suspend (String) -> Unit = {}
+    ) {
         if (text.isBlank()) {
             Log.w(TAG, "speak skipped: blank text")
             return
@@ -299,23 +311,54 @@ class AudioPipeline(
         }
 
         _state.value = PipelineState.SPEAKING
-
-        val channel = Channel<FloatArray>(capacity = 2)
-
-        val producerJob = scope.launch {
-            for (sentence in SherpaTTS.splitIntoSentences(text)) {
-                val samples = tts.generate(sentence.trim())
-                if (samples != null && samples.isNotEmpty()) {
-                    channel.send(samples)
+        val trimmed = text.trim()
+        try {
+            coroutineScope {
+                val channel = Channel<FloatArray>(capacity = 2)
+                val producer = launch(Dispatchers.Default) {
+                    try {
+                        for (sentence in SherpaTTS.splitIntoSentences(trimmed)) {
+                            val s = sentence.trim()
+                            if (s.isEmpty()) continue
+                            val samples = tts.generate(s)
+                            if (samples != null && samples.isNotEmpty()) {
+                                channel.send(samples)
+                            }
+                        }
+                    } finally {
+                        channel.close()
+                    }
                 }
+                val revealJob = launch {
+                    animateDialogueWhileSpeaking(trimmed, onRevealed)
+                }
+                val playbackJob = launch(Dispatchers.IO) {
+                    player.playStreaming(channel, tts.sampleRate)
+                }
+                producer.join()
+                playbackJob.join()
+                revealJob.cancelAndJoin()
+                onRevealed(trimmed)
             }
-            channel.close()
+        } finally {
+            _state.value = PipelineState.IDLE
         }
+    }
 
-        player.playStreaming(channel, tts.sampleRate)
-        producerJob.join()
-
-        _state.value = PipelineState.IDLE
+    private suspend fun animateDialogueWhileSpeaking(
+        fullText: String,
+        onRevealed: suspend (String) -> Unit
+    ) {
+        if (fullText.isEmpty()) return
+        val totalMs = (fullText.length * DIALOGUE_MS_PER_CHAR)
+            .coerceIn(MIN_DIALOGUE_TOTAL_MS, MAX_DIALOGUE_TOTAL_MS)
+        val ticks = (totalMs / REVEAL_TICK_MS).toInt().coerceAtLeast(3)
+        for (t in 1..ticks) {
+            val n = (t * fullText.length / ticks).coerceIn(0, fullText.length)
+            onRevealed(fullText.take(n))
+            delay(REVEAL_TICK_MS)
+        }
+        onRevealed(fullText)
     }
 
     fun stopListening() {
@@ -345,5 +388,10 @@ class AudioPipeline(
         private const val SPEECH_THRESHOLD = 0.025f
         private const val MIN_SPEECH_FRAMES = 3
         private const val SILENCE_CHUNKS_AFTER_SPEECH = 8
+
+        private const val REVEAL_TICK_MS = 36L
+        private const val DIALOGUE_MS_PER_CHAR = 16L
+        private const val MIN_DIALOGUE_TOTAL_MS = 200L
+        private const val MAX_DIALOGUE_TOTAL_MS = 4_800L
     }
 }

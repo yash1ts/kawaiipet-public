@@ -142,13 +142,16 @@ class PetViewModel(
 
         try {
             val response = conversationManager.processUserInput(userText)
-            _currentResponse.value = response.text
+            _currentResponse.value = ""
             animationController.setExpression(PetExpression.TALKING)
             _overlayState.value = OverlayState.Speaking(response.text)
             Log.d(TAG, "State → SPEAKING/TALKING")
 
             startMouthAnimation()
-            audioPipeline.speak(response.text)
+            audioPipeline.speak(response.text) { partial ->
+                _currentResponse.value = partial
+            }
+            _currentResponse.value = response.text
             stopMouthAnimation()
 
             animationController.setExpression(response.expression)

@@ -1,6 +1,7 @@
 package com.kawaiipet.app.util
 
 import android.content.Context
+import com.kawaiipet.app.audio.BundledVoiceModels
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -17,8 +18,12 @@ class PreferenceManager(private val context: Context) {
     val apiKey: Flow<String> = context.dataStore.data.map { it[Keys.API_KEY] ?: "" }
     val petName: Flow<String> = context.dataStore.data.map { it[Keys.PET_NAME] ?: "Mochi" }
     val modelName: Flow<String> = context.dataStore.data.map { it[Keys.MODEL_NAME] ?: "gemini-1.5-flash" }
-    val sttModelId: Flow<String> = context.dataStore.data.map { it[Keys.STT_MODEL_ID] ?: "" }
-    val ttsModelId: Flow<String> = context.dataStore.data.map { it[Keys.TTS_MODEL_ID] ?: "" }
+    val sttModelId: Flow<String> = context.dataStore.data.map {
+        it[Keys.STT_MODEL_ID] ?: BundledVoiceModels.STT_MODEL_ID
+    }
+    val ttsModelId: Flow<String> = context.dataStore.data.map {
+        it[Keys.TTS_MODEL_ID] ?: BundledVoiceModels.TTS_MODEL_ID
+    }
     val personalityPrompt: Flow<String> = context.dataStore.data.map {
         it[Keys.PERSONALITY] ?: DEFAULT_PERSONALITY
     }

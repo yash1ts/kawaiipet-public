@@ -3,6 +3,7 @@ package com.kawaiipet.app.audio
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
+import android.os.Build
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.withContext
@@ -25,7 +26,7 @@ class AudioTrackManager {
         audioTrack = AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
@@ -40,8 +41,11 @@ class AudioTrackManager {
             .setTransferMode(AudioTrack.MODE_STATIC)
             .build()
 
-        audioTrack?.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
-        audioTrack?.play()
+        audioTrack?.let { track ->
+            applyPetVoicePlayback(track)
+            track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+            track.play()
+        }
     }
 
     suspend fun playWithAmplitudeCallback(
@@ -51,6 +55,7 @@ class AudioTrackManager {
         stop()
         val track = buildStreamTrack(sampleRate)
         audioTrack = track
+        applyPetVoicePlayback(track)
         track.play()
         writeWithAmplitude(samples, sampleRate)
         onAmplitude?.invoke(0f)
@@ -68,6 +73,7 @@ class AudioTrackManager {
         stop()
         val track = buildStreamTrack(sampleRate)
         audioTrack = track
+        applyPetVoicePlayback(track)
         track.play()
 
         for (samples in channel) {
@@ -87,7 +93,7 @@ class AudioTrackManager {
         return AudioTrack.Builder()
             .setAudioAttributes(
                 AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
             )
@@ -101,6 +107,17 @@ class AudioTrackManager {
             .setBufferSizeInBytes(bufSize)
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
+    }
+
+    /**
+     * Playback speed + pitch for pet voice ([SherpaTTS.DEFAULT_SYNTH_SPEED] is set to the same factor).
+     */
+    private fun applyPetVoicePlayback(track: AudioTrack) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
+        track.playbackParams = track.playbackParams.apply {
+            pitch = PLAYBACK_PITCH
+            speed = PLAYBACK_SPEED
+        }
     }
 
     private fun writeWithAmplitude(samples: FloatArray, sampleRate: Int) {
@@ -127,5 +144,12 @@ class AudioTrackManager {
     fun release() {
         stop()
         onAmplitude = null
+    }
+
+    companion object {
+        /** >1.0 plays the same samples in less wall-clock time (main “faster voice” control). */
+        private const val PLAYBACK_SPEED = 1.2f
+
+        private const val PLAYBACK_PITCH = 1.12f
     }
 }

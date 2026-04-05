@@ -1,8 +1,6 @@
 package com.kawaiipet.app.audio
 
 import android.util.Log
-import com.k2fsa.sherpa.onnx.EndpointConfig
-import com.k2fsa.sherpa.onnx.FeatureConfig
 import com.k2fsa.sherpa.onnx.HomophoneReplacerConfig
 import com.k2fsa.sherpa.onnx.OfflineModelConfig
 import com.k2fsa.sherpa.onnx.OfflineMoonshineModelConfig
@@ -80,10 +78,10 @@ class SherpaSTT(private val modelManager: ModelManager) {
             debug = false
         )
         val config = OnlineRecognizerConfig(
-            featConfig = FeatureConfig(sampleRate = 16000, featureDim = 80),
+            featConfig = SttEngineConfig.featureConfig(),
             modelConfig = modelConfig,
             lmConfig = OnlineLMConfig(),
-            endpointConfig = EndpointConfig(),
+            endpointConfig = SttEngineConfig.endpointConfig(),
             enableEndpoint = true
         )
         return try {
@@ -115,7 +113,7 @@ class SherpaSTT(private val modelManager: ModelManager) {
             provider = "cpu"
         }
         val config = OfflineRecognizerConfig().apply {
-            featConfig = FeatureConfig(sampleRate = 16000, featureDim = 80)
+            featConfig = SttEngineConfig.featureConfig()
             modelConfig = modelCfg
             hr = HomophoneReplacerConfig("", "", "")
             decodingMethod = "greedy_search"
@@ -167,7 +165,7 @@ class SherpaSTT(private val modelManager: ModelManager) {
             synchronized(moonshineJniLock) {
                 val s = offlineStream ?: return
                 try {
-                    s.acceptWaveform(samples, 16000)
+                    s.acceptWaveform(samples, SttEngineConfig.SAMPLE_RATE)
                 } catch (t: Throwable) {
                     Log.e(TAG, "Moonshine acceptWaveform failed", t)
                 }
@@ -177,7 +175,7 @@ class SherpaSTT(private val modelManager: ModelManager) {
         val s = onlineStream ?: return
         val rec = onlineRecognizer ?: return
         try {
-            s.acceptWaveform(samples, sampleRate = 16000)
+            s.acceptWaveform(samples, sampleRate = SttEngineConfig.SAMPLE_RATE)
             while (rec.isReady(s)) {
                 rec.decode(s)
             }

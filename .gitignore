@@ -33,6 +33,9 @@ captures/
 # Downloaded on first Gradle build (see app/build.gradle.kts downloadSherpaOnnxAar)
 /app/libs/sherpa-onnx-*.aar
 
+# Bundled STT/TTS weights (see app/build.gradle.kts prepareBundledVoiceModels)
+/app/src/main/assets/voice_models/
+
 # OS
 .DS_Store
 Thumbs.db
