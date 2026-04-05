@@ -1,6 +1,7 @@
 "use client";
 
 import { AuroraBackground } from "@/components/ui/aurora-background";
+import { StoreDownloadButtons } from "./StoreDownloadButtons";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
@@ -73,7 +74,7 @@ export function LandingPage({ apkHref, githubUrl }: LandingPageProps) {
       </header>
 
       <main className="relative z-10 flex flex-1 flex-col">
-        <section className="mx-auto flex max-w-5xl flex-col items-center px-4 pb-24 pt-16 text-center sm:px-6 sm:pt-20">
+        <section className="mx-auto flex max-w-5xl flex-col items-center px-4 pb-20 pt-16 text-center sm:px-6 sm:pb-24 sm:pt-20">
           <motion.div
             initial={reduceMotion ? false : { opacity: 0, scale: 0.92, y: 12 }}
             animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
@@ -111,6 +112,17 @@ export function LandingPage({ apkHref, githubUrl }: LandingPageProps) {
           >
             A calm, playful companion on Android—chat, customize, and keep them on screen while you go about your day.
           </motion.p>
+
+          <motion.div
+            id="download"
+            custom={2}
+            variants={fadeUp}
+            initial="hidden"
+            animate="show"
+            className="scroll-mt-24 mt-10 w-full"
+          >
+            <StoreDownloadButtons apkHref={apkHref} />
+          </motion.div>
         </section>
 
         <section id="features" className="relative border-t border-slate-200/50 bg-transparent py-20">
@@ -142,32 +154,6 @@ export function LandingPage({ apkHref, githubUrl }: LandingPageProps) {
           </div>
         </section>
 
-        <section id="download" className="scroll-mt-20 py-24">
-          <div className="mx-auto max-w-lg px-4 text-center sm:px-6">
-            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">Get KawaiiPet</h2>
-            <p className="mt-3 text-slate-600">Android APK direct install. Not on Google Play yet.</p>
-            <p className="mt-2 text-sm text-slate-500">iOS — coming soon</p>
-
-            <div className="mt-8 flex flex-col items-center gap-4">
-              {apkHref ? (
-                <motion.a
-                  href={apkHref}
-                  className="inline-flex min-h-12 items-center justify-center rounded-full bg-[var(--color-primary)] px-10 text-base font-semibold text-white shadow-md shadow-sky-500/20 transition-transform hover:scale-[1.02] active:scale-[0.98]"
-                  whileTap={reduceMotion ? undefined : { scale: 0.98 }}
-                >
-                  Download APK
-                </motion.a>
-              ) : (
-                <p className="max-w-sm text-sm text-slate-500">
-                  APK download is not configured. Set{" "}
-                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">NEXT_PUBLIC_APK_URL</code> or add{" "}
-                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">kawaiipet.apk</code> to{" "}
-                  <code className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-800">public/</code> for production.
-                </p>
-              )}
-            </div>
-          </div>
-        </section>
       </main>
 
       <footer className="relative z-10 border-t border-slate-200/40 bg-white/55 py-10 backdrop-blur-md">
