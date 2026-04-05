@@ -10,8 +10,12 @@ import com.kawaiipet.app.audio.ModelManager
 import com.kawaiipet.app.overlay.OverlayState
 import com.kawaiipet.app.util.PermissionHelper
 import com.kawaiipet.app.util.PreferenceManager
+import com.kawaiipet.app.util.Analytics
+import com.kawaiipet.app.util.UiFeedback
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +27,8 @@ class PetViewModel(
     private val audioPipeline: AudioPipeline,
     private val preferenceManager: PreferenceManager,
     private val modelManager: ModelManager,
-    private val animationController: PetAnimationController
+    private val animationController: PetAnimationController,
+    private val uiFeedback: UiFeedback
 ) : ViewModel() {
 
     private val _overlayState = MutableStateFlow<OverlayState>(OverlayState.Idle)
@@ -42,6 +47,7 @@ class PetViewModel(
     fun onPetTapped() {
         if (_overlayState.value !is OverlayState.Idle) return
 
+        uiFeedback.click()
         currentJob?.cancel()
         currentJob = viewModelScope.launch {
             try {
@@ -49,6 +55,7 @@ class PetViewModel(
                     _currentResponse.value =
                         "Microphone is off for this app. Open KawaiiPet, tap Grant Mic on the home screen, or enable Microphone in Android app settings."
                     animationController.setExpression(PetExpression.SAD)
+                    uiFeedback.softNegative()
                     _overlayState.value = OverlayState.Speaking(_currentResponse.value)
                     delay(4500L)
                     returnToIdle()
@@ -62,6 +69,7 @@ class PetViewModel(
                     _overlayState.value = OverlayState.PreparingVoice
                     _listeningSubtitle.value = "Loading voice model…"
                     animationController.setExpression(PetExpression.THINKING)
+                    uiFeedback.petPreparing()
                     Log.d(TAG, "State → PREPARING_VOICE (waiting for Sherpa)")
                     audioPipeline.awaitPetVoiceEnginesReady(timeoutMs = 90_000L)
                     val ready = audioPipeline.isSttReady
@@ -70,6 +78,7 @@ class PetViewModel(
                         _currentResponse.value =
                             "Voice model is still loading. Wait a few seconds and tap again."
                         animationController.setExpression(PetExpression.SAD)
+                        uiFeedback.softNegative()
                         _overlayState.value = OverlayState.Speaking(_currentResponse.value)
                         delay(3500L)
                         returnToIdle()
@@ -77,12 +86,16 @@ class PetViewModel(
                     }
                 }
 
+                Analytics.capture(event = "voice conversation initiated")
                 _overlayState.value = OverlayState.Listening
                 _listeningSubtitle.value = ""
                 animationController.setExpression(PetExpression.LISTENING)
+                uiFeedback.petListening()
                 Log.d(TAG, "State → LISTENING")
 
-                val userText = audioPipeline.listenAndTranscribe()
+                val userText = withContext(Dispatchers.Default) {
+                    audioPipeline.listenAndTranscribe()
+                }
 
                 _listeningSubtitle.value = ""
                 Log.d(TAG, "STT result: '$userText'")
@@ -90,6 +103,7 @@ class PetViewModel(
                 when {
                     userText.isBlank() -> {
                         animationController.setExpression(PetExpression.SAD)
+                        uiFeedback.softNegative()
                         _currentResponse.value = "I didn't hear anything..."
                         _overlayState.value = OverlayState.Speaking("I didn't hear anything...")
                         delay(2000L)
@@ -97,9 +111,11 @@ class PetViewModel(
                     }
                     userText == "[voice]" -> {
                         animationController.setExpression(PetExpression.THINKING)
+                        uiFeedback.petThinking()
                         _overlayState.value = OverlayState.Processing("(voice input)")
                         _currentResponse.value = "I heard you! But I need a speech model to understand. Download one in Settings."
                         animationController.setExpression(PetExpression.SAD)
+                        uiFeedback.softNegative()
                         _overlayState.value = OverlayState.Speaking(_currentResponse.value)
                         delay(emotionDurationMs)
                         returnToIdle()
@@ -110,16 +126,12 @@ class PetViewModel(
                 Log.e(TAG, "onPetTapped failed", e)
                 _currentResponse.value = "Couldn't hear you — try again?"
                 animationController.setExpression(PetExpression.SAD)
+                uiFeedback.softNegative()
                 _overlayState.value = OverlayState.Speaking(_currentResponse.value)
                 delay(emotionDurationMs)
                 returnToIdle()
             }
         }
-    }
-
-    fun onPetLongPressed() {
-        if (_overlayState.value !is OverlayState.Idle) return
-        _overlayState.value = OverlayState.TextInput
     }
 
     fun onTextSubmitted(text: String) {
@@ -138,15 +150,24 @@ class PetViewModel(
     private suspend fun processText(userText: String) {
         _overlayState.value = OverlayState.Processing(userText)
         animationController.setExpression(PetExpression.THINKING)
+        uiFeedback.petThinking()
         Log.d(TAG, "State → PROCESSING/THINKING")
 
         try {
             val response = conversationManager.processUserInput(userText)
+            Analytics.capture(
+                event = "ai response received",
+                properties = mapOf(
+                    "expression" to response.expression.name,
+                    "response_length" to response.text.length,
+                ),
+            )
             _currentResponse.value = ""
             animationController.setExpression(PetExpression.TALKING)
             _overlayState.value = OverlayState.Speaking(response.text)
             Log.d(TAG, "State → SPEAKING/TALKING")
 
+            uiFeedback.petSpeakingStart()
             startMouthAnimation()
             audioPipeline.speak(response.text) { partial ->
                 _currentResponse.value = partial
@@ -155,12 +176,16 @@ class PetViewModel(
             stopMouthAnimation()
 
             animationController.setExpression(response.expression)
+            if (response.expression == PetExpression.HAPPY) {
+                uiFeedback.petEmotionPositive()
+            }
             Log.d(TAG, "State → EMOTION(${response.expression})")
             delay(emotionDurationMs)
         } catch (e: Exception) {
             Log.e(TAG, "processText failed", e)
             _currentResponse.value = "Something went wrong..."
             animationController.setExpression(PetExpression.SAD)
+            uiFeedback.softNegative()
             _overlayState.value = OverlayState.Speaking(_currentResponse.value)
             delay(emotionDurationMs)
         }

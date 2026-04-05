@@ -33,9 +33,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.kawaiipet.app.ui.theme.SlimeWater
+import com.kawaiipet.app.util.UiFeedback
 
 @Composable
 fun TextInputOverlay(
+    uiFeedback: UiFeedback,
     onSubmit: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -77,6 +79,7 @@ fun TextInputOverlay(
             keyboardActions = KeyboardActions(
                 onSend = {
                     if (text.isNotBlank()) {
+                        uiFeedback.click()
                         onSubmit(text.trim())
                         text = ""
                     }
@@ -87,6 +90,7 @@ fun TextInputOverlay(
         IconButton(
             onClick = {
                 if (text.isNotBlank()) {
+                    uiFeedback.click()
                     onSubmit(text.trim())
                     text = ""
                 }

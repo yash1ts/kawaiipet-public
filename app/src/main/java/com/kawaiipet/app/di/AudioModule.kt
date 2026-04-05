@@ -7,6 +7,7 @@ import com.kawaiipet.app.audio.AudioTrackManager
 import com.kawaiipet.app.audio.ModelManager
 import com.kawaiipet.app.audio.SherpaSTT
 import com.kawaiipet.app.audio.SherpaTTS
+import com.kawaiipet.app.util.PreferenceManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -50,6 +51,7 @@ object AudioModule {
         stt: SherpaSTT,
         tts: SherpaTTS,
         recorder: AudioRecordManager,
-        player: AudioTrackManager
-    ): AudioPipeline = AudioPipeline(context, stt, tts, recorder, player)
+        player: AudioTrackManager,
+        preferenceManager: PreferenceManager,
+    ): AudioPipeline = AudioPipeline(context, stt, tts, recorder, player, preferenceManager)
 }

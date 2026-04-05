@@ -1,0 +1,14 @@
+# Linked project: supabase link --project-ref iutndoomufkwzilxjfhz
+
+project_id = "iutndoomufkwzilxjfhz"
+
+[api]
+enabled = true
+
+# Per-function config (global [functions].verify_jwt is no longer valid in current CLI).
+# JWT is still verified inside chat/extract-facts via auth.getUser(); gateway JWT check stays off so the client Authorization header reaches the function.
+[functions.chat]
+verify_jwt = false
+
+[functions.extract-facts]
+verify_jwt = false

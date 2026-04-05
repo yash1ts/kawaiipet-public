@@ -2,6 +2,9 @@ package com.kawaiipet.app.memory
 
 import com.kawaiipet.app.memory.db.FactDao
 import com.kawaiipet.app.memory.db.FactEntity
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,12 +28,14 @@ class MemoryRepository @Inject constructor(
     suspend fun findFactsByKeywords(keywords: List<String>): List<FactEntity> {
         if (keywords.isEmpty()) return getRecentFacts(5)
 
-        val results = mutableSetOf<FactEntity>()
-        keywords.forEach { keyword ->
-            results.addAll(factDao.findByKeyword(keyword))
+        return coroutineScope {
+            keywords
+                .map { keyword -> async { factDao.findByKeyword(keyword) } }
+                .awaitAll()
+                .flatten()
+                .distinctBy { it.id }
+                .sortedByDescending { it.importanceScore }
+                .take(10)
         }
-        return results
-            .sortedByDescending { it.importanceScore }
-            .take(10)
     }
 }

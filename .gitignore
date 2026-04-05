@@ -51,9 +51,20 @@ pet.zip
 # Keystore (never commit signing keys)
 *.jks
 *.keystore
+keystore.properties
 
 # Google Services (may contain API keys)
 google-services.json
+
+# Next.js (marketing site)
+node_modules/
+.next/
+
+# Supabase APK upload (secrets)
+apk-upload.env
+
+# Staged APK for upload
+/dist/
 
 # Misc
 *.log

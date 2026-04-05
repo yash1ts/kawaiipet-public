@@ -14,7 +14,6 @@ class ConversationManager @Inject constructor(
     private val memoryRepository: MemoryRepository,
     private val factExtractor: FactExtractor,
     private val factMatcher: FactMatcher,
-    private val promptBuilder: PromptBuilder
 ) {
     data class LlmResponse(val text: String, val expression: PetExpression)
 
@@ -28,10 +27,10 @@ class ConversationManager @Inject constructor(
             memoryRepository.touchFact(fact.id)
         }
 
-        val systemPrompt = promptBuilder.build(relevantFacts)
         val messages = shortTermMemory.getMessages()
+        val factTexts = relevantFacts.map { it.factText }
 
-        val rawResponse = llmService.chat(messages, systemPrompt)
+        val rawResponse = llmService.chat(messages, factTexts)
         val (cleanText, expression) = parseEmotionTag(rawResponse)
 
         shortTermMemory.addMessage(ChatMessage(Role.ASSISTANT, cleanText))

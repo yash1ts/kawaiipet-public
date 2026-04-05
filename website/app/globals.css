@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #29b6f6;
+  --color-primary-deep: #0288d1;
+  --color-seafoam: #26c6da;
+  --color-primary-light: #b3e5fc;
+  --color-surface-light: #e8f4fc;
+  --color-surface-dark: #0d1b2a;
+  --color-on-surface-dark: #e1f5fe;
+  --color-on-surface-light: #0d3a4a;
+  --color-bubble: #f5fbff;
+}
+
+@keyframes aurora {
+  from {
+    background-position: 50% 50%, 50% 50%;
+  }
+  to {
+    background-position: 350% 50%, 350% 50%;
+  }
+}
+
+@theme inline {
+  --color-background: #ffffff;
+  --color-foreground: var(--color-on-surface-light);
+  --font-sans: var(--font-dm-sans);
+  --animate-aurora: aurora 60s linear infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-on-surface-light);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+  min-height: 100dvh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aurora-layer {
+    opacity: 0.55;
+  }
+
+  .aurora-layer::after {
+    animation: none !important;
+    opacity: 0.45 !important;
+  }
+}

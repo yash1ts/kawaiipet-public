@@ -14,6 +14,13 @@ class AudioTrackManager {
     private var audioTrack: AudioTrack? = null
     var onAmplitude: ((Float) -> Unit)? = null
 
+    /** 0f–1f applied to TTS [AudioTrack] (not system volume). */
+    @Volatile
+    var outputVolume: Float = 1f
+        set(value) {
+            field = value.coerceIn(0f, 1f)
+        }
+
     fun play(samples: FloatArray, sampleRate: Int) {
         stop()
 
@@ -43,6 +50,7 @@ class AudioTrackManager {
 
         audioTrack?.let { track ->
             applyPetVoicePlayback(track)
+            applyOutputVolume(track)
             track.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
             track.play()
         }
@@ -56,6 +64,7 @@ class AudioTrackManager {
         val track = buildStreamTrack(sampleRate)
         audioTrack = track
         applyPetVoicePlayback(track)
+        applyOutputVolume(track)
         track.play()
         writeWithAmplitude(samples, sampleRate)
         onAmplitude?.invoke(0f)
@@ -74,6 +83,7 @@ class AudioTrackManager {
         val track = buildStreamTrack(sampleRate)
         audioTrack = track
         applyPetVoicePlayback(track)
+        applyOutputVolume(track)
         track.play()
 
         for (samples in channel) {
@@ -117,6 +127,12 @@ class AudioTrackManager {
         track.playbackParams = track.playbackParams.apply {
             pitch = PLAYBACK_PITCH
             speed = PLAYBACK_SPEED
+        }
+    }
+
+    private fun applyOutputVolume(track: AudioTrack) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            track.setVolume(outputVolume)
         }
     }
 

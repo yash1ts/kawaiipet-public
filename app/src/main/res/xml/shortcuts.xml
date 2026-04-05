@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="start_pet"
+        android:enabled="true"
+        android:icon="@drawable/ic_pet_notification"
+        android:shortcutShortLabel="@string/shortcut_start_pet_short"
+        android:shortcutLongLabel="@string/shortcut_start_pet_long">
+        <intent
+            android:action="com.kawaiipet.app.action.START_PET"
+            android:targetPackage="com.kawaiipet.app"
+            android:targetClass="com.kawaiipet.app.ui.PetStartTrampolineActivity" />
+    </shortcut>
+</shortcuts>

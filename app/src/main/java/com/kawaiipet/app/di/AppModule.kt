@@ -1,11 +1,11 @@
 package com.kawaiipet.app.di
 
 import android.content.Context
-import com.kawaiipet.app.llm.GeminiLlmService
 import com.kawaiipet.app.llm.LlmService
+import com.kawaiipet.app.llm.SupabaseLlmService
 import com.kawaiipet.app.memory.db.AppDatabase
-import com.kawaiipet.app.memory.db.FactDao
 import com.kawaiipet.app.util.PreferenceManager
+import com.kawaiipet.app.memory.db.FactDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,6 +34,5 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideLlmService(preferenceManager: PreferenceManager): LlmService =
-        GeminiLlmService(preferenceManager)
+    fun provideLlmService(impl: SupabaseLlmService): LlmService = impl
 }

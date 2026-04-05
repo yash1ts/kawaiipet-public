@@ -14,56 +14,77 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
-import com.kawaiipet.app.util.PreferenceManager
+import com.kawaiipet.app.R
+import com.kawaiipet.app.util.Analytics
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val prefs: PreferenceManager
+    private val supabase: SupabaseClient,
 ) : ViewModel() {
-    val apiKey = prefs.apiKey
-    val petName = prefs.petName
-    val modelName = prefs.modelName
-    val personalityPrompt = prefs.personalityPrompt
 
-    suspend fun setApiKey(value: String) = prefs.setApiKey(value)
-    suspend fun setPetName(value: String) = prefs.setPetName(value)
-    suspend fun setModelName(value: String) = prefs.setModelName(value)
-    suspend fun setPersonalityPrompt(value: String) = prefs.setPersonalityPrompt(value)
+    private val _signedInEmail = MutableStateFlow<String?>(null)
+    val signedInEmail: StateFlow<String?> = _signedInEmail.asStateFlow()
+
+    init {
+        refreshSession()
+    }
+
+    fun refreshSession() {
+        _signedInEmail.value = supabase.auth.currentUserOrNull()?.email
+    }
+
+    fun signOut(onDone: () -> Unit) {
+        viewModelScope.launch {
+            Analytics.capture(event = "user signed out")
+            runCatching { supabase.auth.signOut() }
+            Analytics.reset()
+            refreshSession()
+            withContext(Dispatchers.Main.immediate) { onDone() }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     navController: NavController,
-    viewModel: SettingsViewModel = hiltViewModel()
+    onSignedOut: () -> Unit,
+    viewModel: SettingsViewModel = hiltViewModel(),
 ) {
-    val apiKey by viewModel.apiKey.collectAsState(initial = "")
-    val petName by viewModel.petName.collectAsState(initial = "Mochi")
-    val modelName by viewModel.modelName.collectAsState(initial = "gemini-1.5-flash")
-    val personality by viewModel.personalityPrompt.collectAsState(initial = "")
-    val scope = rememberCoroutineScope()
+    val signedInEmail by viewModel.signedInEmail.collectAsState()
+    var errorText by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -81,53 +102,37 @@ fun SettingsScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            Text("Gemini API Key", style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-                value = apiKey,
-                onValueChange = { scope.launch { viewModel.setApiKey(it) } },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Enter your Gemini API key") },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true
+            Text(
+                text = stringResource(R.string.settings_account_section),
+                style = MaterialTheme.typography.titleMedium,
             )
-
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = stringResource(R.string.signed_in_as, signedInEmail ?: "—"),
+                style = MaterialTheme.typography.bodyLarge,
+            )
             Spacer(modifier = Modifier.height(20.dp))
 
-            Text("Pet Name", style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-                value = petName,
-                onValueChange = { scope.launch { viewModel.setPetName(it) } },
+            OutlinedButton(
+                onClick = {
+                    errorText = null
+                    viewModel.signOut {
+                        onSignedOut()
+                    }
+                },
                 modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Give your pet a name") },
-                singleLine = true
-            )
+            ) {
+                Text(stringResource(R.string.sign_out))
+            }
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text("Gemini Model", style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-                value = modelName,
-                onValueChange = { scope.launch { viewModel.setModelName(it) } },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("e.g. gemini-1.5-flash") },
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Text("Pet Personality", style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(4.dp))
-            OutlinedTextField(
-                value = personality,
-                onValueChange = { scope.launch { viewModel.setPersonalityPrompt(it) } },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Describe your pet's personality") },
-                minLines = 4,
-                maxLines = 8
-            )
+            errorText?.let { err ->
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = err,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }

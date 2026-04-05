@@ -29,7 +29,6 @@ private const val PET_SIZE = 88
 fun PetOverlay(
     animationController: PetAnimationController,
     onTap: () -> Unit,
-    onLongPress: () -> Unit,
     onDrag: (Float, Float) -> Unit,
     onDragStart: () -> Unit = {},
     onDragEnd: () -> Unit = {},
@@ -44,7 +43,6 @@ fun PetOverlay(
             .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = { onTap() },
-                    onLongPress = { onLongPress() },
                     onDoubleTap = { onDoubleTap() }
                 )
             }

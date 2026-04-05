@@ -1,11 +1,41 @@
 import java.net.URI
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+}
+
+// Supabase: read from repo-root local.properties (same file as sdk.dir) and/or app/local.properties.
+// Root is standard; app/local.properties is merged so keys are not missed.
+// Use your hosted URL (https://xxxx.supabase.co). Do not use http://localhost from the app —
+// on an emulator, localhost is the emulator itself; use https://....supabase.co or http://10.0.2.2:54321 for local CLI.
+val localProperties = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+    project.file("local.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
+}
+val posthogApiKeyProp = (localProperties.getProperty("posthog.apiKey") ?: "").replace("\\", "\\\\").replace("\"", "\\\"")
+val posthogHostProp = (localProperties.getProperty("posthog.host") ?: "").replace("\\", "\\\\").replace("\"", "\\\"")
+val supabaseUrlProp = (localProperties.getProperty("supabase.url") ?: "").replace("\\", "\\\\").replace("\"", "\\\"")
+val supabaseAnonKeyProp = (localProperties.getProperty("supabase.anon.key") ?: "").replace("\\", "\\\\").replace("\"", "\\\"")
+// Must match AndroidManifest deep link and be added under Auth → URL Configuration → Redirect URLs in Supabase.
+val supabaseAuthRedirectScheme = "com.kawaiipet.app"
+val supabaseAuthRedirectHost = "auth-callback"
+
+// Optional Play Store / release signing: create keystore.properties at repo root (gitignored) with:
+// storeFile=release.keystore
+// storePassword=...
+// keyAlias=...
+// keyPassword=...
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 configurations.configureEach {
@@ -18,22 +48,50 @@ configurations.configureEach {
 
 android {
     namespace = "com.kawaiipet.app"
-    compileSdk = 35
+    compileSdk = 36
+
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")!!
+                keyPassword = keystoreProperties.getProperty("keyPassword")!!
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile")!!)
+                storePassword = keystoreProperties.getProperty("storePassword")!!
+            }
+        }
+    }
 
     defaultConfig {
         applicationId = "com.kawaiipet.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "POSTHOG_API_KEY", "\"$posthogApiKeyProp\"")
+        buildConfigField("String", "POSTHOG_HOST", "\"$posthogHostProp\"")
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrlProp\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKeyProp\"")
+        buildConfigField("String", "SUPABASE_AUTH_REDIRECT_SCHEME", "\"$supabaseAuthRedirectScheme\"")
+        buildConfigField("String", "SUPABASE_AUTH_REDIRECT_HOST", "\"$supabaseAuthRedirectHost\"")
+        manifestPlaceholders["supabaseAuthScheme"] = supabaseAuthRedirectScheme
+        manifestPlaceholders["supabaseAuthHost"] = supabaseAuthRedirectHost
     }
 
     buildTypes {
+        debug {
+            isMinifyEnabled = false
+            isDebuggable = true
+        }
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
+            isDebuggable = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
+            )
+            signingConfig = signingConfigs.getByName(
+                if (keystorePropertiesFile.exists()) "release" else "debug"
             )
         }
     }
@@ -49,6 +107,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -181,7 +240,14 @@ dependencies {
 
     implementation(libs.commons.compress)
 
-    implementation(libs.google.ai)
+    implementation(platform(libs.supabase.bom))
+    implementation(libs.supabase.postgrest)
+    implementation(libs.supabase.auth)
+    implementation(libs.supabase.functions)
+    implementation(libs.ktor.client.android)
+    implementation(libs.kotlinx.serialization.json)
 
     implementation(files(sherpaOnnxAarFile.asFile))
+
+    implementation(libs.posthog.android)
 }

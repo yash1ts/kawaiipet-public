@@ -5,6 +5,8 @@ import com.kawaiipet.app.audio.BundledVoiceModels
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -15,9 +17,7 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class PreferenceManager(private val context: Context) {
 
-    val apiKey: Flow<String> = context.dataStore.data.map { it[Keys.API_KEY] ?: "" }
     val petName: Flow<String> = context.dataStore.data.map { it[Keys.PET_NAME] ?: "Mochi" }
-    val modelName: Flow<String> = context.dataStore.data.map { it[Keys.MODEL_NAME] ?: "gemini-1.5-flash" }
     val sttModelId: Flow<String> = context.dataStore.data.map {
         it[Keys.STT_MODEL_ID] ?: BundledVoiceModels.STT_MODEL_ID
     }
@@ -27,25 +27,25 @@ class PreferenceManager(private val context: Context) {
     val personalityPrompt: Flow<String> = context.dataStore.data.map {
         it[Keys.PERSONALITY] ?: DEFAULT_PERSONALITY
     }
+    val ttsSpeakerId: Flow<Int> = context.dataStore.data.map {
+        it[Keys.TTS_SPEAKER_ID] ?: 1
+    }
+    val ttsVolume: Flow<Float> = context.dataStore.data.map {
+        it[Keys.TTS_VOLUME] ?: 1f
+    }
 
-    suspend fun getApiKey(): String = apiKey.first()
     suspend fun getPetName(): String = petName.first()
-    suspend fun getModelName(): String = modelName.first()
 
     suspend fun getSttModelId(): String = sttModelId.first()
 
     suspend fun getTtsModelId(): String = ttsModelId.first()
 
-    suspend fun setApiKey(value: String) {
-        context.dataStore.edit { it[Keys.API_KEY] = value }
-    }
+    suspend fun getTtsSpeakerId(): Int = ttsSpeakerId.first()
+
+    suspend fun getTtsVolume(): Float = ttsVolume.first()
 
     suspend fun setPetName(value: String) {
         context.dataStore.edit { it[Keys.PET_NAME] = value }
-    }
-
-    suspend fun setModelName(value: String) {
-        context.dataStore.edit { it[Keys.MODEL_NAME] = value }
     }
 
     suspend fun setSttModelId(value: String) {
@@ -60,13 +60,21 @@ class PreferenceManager(private val context: Context) {
         context.dataStore.edit { it[Keys.PERSONALITY] = value }
     }
 
+    suspend fun setTtsSpeakerId(value: Int) {
+        context.dataStore.edit { it[Keys.TTS_SPEAKER_ID] = value }
+    }
+
+    suspend fun setTtsVolume(value: Float) {
+        context.dataStore.edit { it[Keys.TTS_VOLUME] = value.coerceIn(0f, 1f) }
+    }
+
     private object Keys {
-        val API_KEY = stringPreferencesKey("api_key")
         val PET_NAME = stringPreferencesKey("pet_name")
-        val MODEL_NAME = stringPreferencesKey("model_name")
         val STT_MODEL_ID = stringPreferencesKey("stt_model_id")
         val TTS_MODEL_ID = stringPreferencesKey("tts_model_id")
         val PERSONALITY = stringPreferencesKey("personality")
+        val TTS_SPEAKER_ID = intPreferencesKey("tts_speaker_id")
+        val TTS_VOLUME = floatPreferencesKey("tts_volume")
     }
 
     companion object {

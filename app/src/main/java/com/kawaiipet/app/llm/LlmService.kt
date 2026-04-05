@@ -1,7 +1,8 @@
 package com.kawaiipet.app.llm
 
 interface LlmService {
-    suspend fun chat(messages: List<ChatMessage>, systemPrompt: String): String
+    /** [factTexts] are local-memory snippets only; the server merges them into the system prompt. */
+    suspend fun chat(messages: List<ChatMessage>, factTexts: List<String>): String
     suspend fun extractFacts(conversationSnippet: String): List<String>
 }
 

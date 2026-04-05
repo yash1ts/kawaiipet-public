@@ -18,6 +18,7 @@ import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.kawaiipet.app.KawaiiPetApplication
 import com.kawaiipet.app.R
+import com.kawaiipet.app.util.Analytics
 import com.kawaiipet.app.audio.AudioPipeline
 import com.kawaiipet.app.audio.ModelManager
 import com.kawaiipet.app.llm.ConversationManager
@@ -25,12 +26,13 @@ import com.kawaiipet.app.pet.PetAnimationController
 import com.kawaiipet.app.pet.PetViewModel
 import com.kawaiipet.app.ui.MainActivity
 import com.kawaiipet.app.util.PreferenceManager
+import com.kawaiipet.app.util.UiFeedback
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 import javax.inject.Inject
 
@@ -42,6 +44,7 @@ class OverlayService : Service() {
     @Inject lateinit var modelManager: ModelManager
     @Inject lateinit var preferenceManager: PreferenceManager
     @Inject lateinit var animationController: PetAnimationController
+    @Inject lateinit var uiFeedback: UiFeedback
 
     private val serviceJob = SupervisorJob()
     private val serviceScope = CoroutineScope(serviceJob + Dispatchers.Main.immediate)
@@ -57,16 +60,21 @@ class OverlayService : Service() {
         super.onCreate()
         startForeground(NOTIFICATION_ID, buildNotification())
 
-        val (sttId, ttsId) = runBlocking(Dispatchers.IO) {
-            preferenceManager.getSttModelId() to preferenceManager.getTtsModelId()
+        serviceScope.launch(Dispatchers.IO) {
+            val sttId = preferenceManager.getSttModelId()
+            val ttsId = preferenceManager.getTtsModelId()
+            val loadStt = sttId.isNotBlank() && modelManager.isModelDownloaded(sttId)
+            val loadTts = ttsId.isNotBlank() && modelManager.isModelDownloaded(ttsId)
+            withContext(Dispatchers.Main.immediate) {
+                audioPipeline.schedulePetVoiceModelPrepare(
+                    scope = serviceScope,
+                    sttId = sttId,
+                    ttsId = ttsId,
+                    loadStt = loadStt,
+                    loadTts = loadTts,
+                )
+            }
         }
-        audioPipeline.schedulePetVoiceModelPrepare(
-            scope = serviceScope,
-            sttId = sttId,
-            ttsId = ttsId,
-            loadStt = sttId.isNotBlank() && modelManager.isModelDownloaded(sttId),
-            loadTts = ttsId.isNotBlank() && modelManager.isModelDownloaded(ttsId)
-        )
 
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         lifecycleOwner.onCreate()
@@ -87,7 +95,8 @@ class OverlayService : Service() {
                     audioPipeline,
                     preferenceManager,
                     modelManager,
-                    animationController
+                    animationController,
+                    uiFeedback
                 ) as T
         }
         return ViewModelProvider(lifecycleOwner, factory)[PetViewModel::class.java]
@@ -116,6 +125,7 @@ class OverlayService : Service() {
                 OverlayContent(
                     petViewModel = petViewModel,
                     animationController = animationController,
+                    uiFeedback = uiFeedback,
                     onDrag = { dx, dy ->
                         overlayLayoutParams.x += dx.toInt()
                         overlayLayoutParams.y += dy.toInt()
@@ -127,7 +137,10 @@ class OverlayService : Service() {
                         hideCloseDragHint()
                     },
                     onRequestFocus = { focusable -> setFocusable(focusable) },
-                    onDismiss = { stopSelf() }
+                    onDismiss = {
+                        uiFeedback.click()
+                        stopSelf()
+                    }
                 )
             }
         }
@@ -209,6 +222,7 @@ class OverlayService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Analytics.capture(event = "pet stopped")
         serviceJob.cancel()
         petViewModel.cleanup()
         hideCloseDragHint()
