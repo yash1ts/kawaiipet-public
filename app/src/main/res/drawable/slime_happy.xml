@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Body (slightly bouncy — wider) -->
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M60,12 C25,12 6,44 6,70 C6,102 28,110 60,110 C92,110 114,102 114,70 C114,44 95,12 60,12z" />
+    <!-- Body highlight -->
+    <path
+        android:fillColor="#64B5F6"
+        android:pathData="M60,18 C36,18 20,40 20,62 C20,55 34,24 60,24 C74,24 85,32 90,44 C84,26 74,18 60,18z" />
+    <!-- Left eye — happy arc (closed) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M40,54 Q50,44 58,54" />
+    <!-- Right eye — happy arc (closed) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M65,54 Q75,44 83,54" />
+    <!-- Big smile -->
+    <path
+        android:fillColor="#BBDEFB"
+        android:pathData="M42,74 Q60,96 82,74 Q62,84 42,74z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="2"
+        android:pathData="M42,74 Q60,96 82,74" />
+    <!-- Blush left -->
+    <path
+        android:fillColor="#F48FB1"
+        android:alpha="0.4"
+        android:pathData="M28,68 C28,64 34,62 38,64 C42,66 42,72 38,74 C34,76 28,72 28,68z" />
+    <!-- Blush right -->
+    <path
+        android:fillColor="#F48FB1"
+        android:alpha="0.4"
+        android:pathData="M84,68 C84,64 90,62 94,64 C98,66 98,72 94,74 C90,76 84,72 84,68z" />
+</vector>

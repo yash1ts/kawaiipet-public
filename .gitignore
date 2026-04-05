@@ -1,0 +1,60 @@
+# Built outputs
+/build/
+/app/build/
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Gradle
+.gradle/
+gradle-[0-9]*/
+!gradle/wrapper/
+*.gradletasknamecache
+
+# Local properties (SDK path, signing keys, etc.)
+local.properties
+
+# IntelliJ / Android Studio
+/.idea/
+*.iml
+*.iws
+*.ipr
+.navigation/
+captures/
+
+# Kotlin
+.kotlin/
+
+# Native build
+.externalNativeBuild/
+.cxx/
+
+# Downloaded on first Gradle build (see app/build.gradle.kts downloadSherpaOnnxAar)
+/app/libs/sherpa-onnx-*.aar
+
+# OS
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Profiling & crash dumps
+*.hprof
+
+# Archives (build artifacts)
+pet.zip
+
+# Keystore (never commit signing keys)
+*.jks
+*.keystore
+
+# Google Services (may contain API keys)
+google-services.json
+
+# Misc
+*.log
+*.tmp
+*.bak
+*.swp
+*~

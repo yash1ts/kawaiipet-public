@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Body -->
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M60,18 C28,18 10,46 10,70 C10,100 30,108 60,108 C90,108 110,100 110,70 C110,46 92,18 60,18z" />
+    <!-- Body highlight -->
+    <path
+        android:fillColor="#64B5F6"
+        android:pathData="M60,23 C38,23 22,44 22,66 C22,59 35,28 60,28 C72,28 82,34 88,44 C82,30 72,23 60,23z" />
+    <!-- Left eye looking up-right -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M40,56 C40,50 44,45 50,45 C56,45 60,50 60,56 C60,62 56,67 50,67 C44,67 40,62 40,56z" />
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M50,50 C50,48 52,46 54,46 C56,46 58,48 58,50 C58,52 56,54 54,54 C52,54 50,52 50,50z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M52,48 C52,47 53,47 53,47 C54,47 54,48 54,48 C54,49 53,49 53,49 C52,49 52,49 52,48z" />
+    <!-- Right eye looking up-right -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M65,56 C65,50 69,45 75,45 C81,45 85,50 85,56 C85,62 81,67 75,67 C69,67 65,62 65,56z" />
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M75,50 C75,48 77,46 79,46 C81,46 83,48 83,50 C83,52 81,54 79,54 C77,54 75,52 75,50z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M77,48 C77,47 78,47 78,47 C79,47 79,48 79,48 C79,49 78,49 78,49 C77,49 77,49 77,48z" />
+    <!-- Small mouth — hmm -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#0D47A1"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M54,78 L70,78" />
+    <!-- Thought bubble dots -->
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M92,28 C92,24 96,22 100,24 C104,26 104,32 100,34 C96,36 92,32 92,28z" />
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M100,14 C100,10 104,8 108,10 C112,12 112,18 108,20 C104,22 100,18 100,14z" />
+    <path
+        android:fillColor="#90CAF9"
+        android:pathData="M86,38 C86,36 88,35 90,36 C92,37 92,40 90,41 C88,42 86,40 86,38z" />
+</vector>

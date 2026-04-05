@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Slime water — light blue palette -->
+    <color name="slime_water">#B3E5FC</color>
+    <color name="slime_water_mid">#29B6F6</color>
+    <color name="slime_water_deep">#0288D1</color>
+    <color name="slime_water_deep_dark">#01579B</color>
+    <color name="slime_seafoam">#26C6DA</color>
+    <color name="slime_surface">#E8F4FC</color>
+    <color name="bubble_background">#F5FBFF</color>
+    <color name="bubble_border">#B3E5FC</color>
+</resources>

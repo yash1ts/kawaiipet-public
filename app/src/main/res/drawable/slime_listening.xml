@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- Body (slightly tall — attentive) -->
+    <path
+        android:fillColor="#42A5F5"
+        android:pathData="M60,10 C28,10 10,42 10,68 C10,100 30,108 60,108 C90,108 110,100 110,68 C110,42 92,10 60,10z" />
+    <!-- Body highlight -->
+    <path
+        android:fillColor="#64B5F6"
+        android:pathData="M60,16 C38,16 22,38 22,60 C22,53 35,22 60,22 C72,22 82,28 88,38 C82,24 72,16 60,16z" />
+    <!-- Left eye — wide open (attentive) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,52 C36,44 42,38 50,38 C58,38 64,44 64,52 C64,60 58,66 50,66 C42,66 36,60 36,52z" />
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M46,50 C46,46 48,43 52,43 C56,43 58,46 58,50 C58,54 56,57 52,57 C48,57 46,54 46,50z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,46 C48,45 49,44 50,44 C51,44 52,45 52,46 C52,47 51,48 50,48 C49,48 48,47 48,46z" />
+    <!-- Right eye — wide open (attentive) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M61,52 C61,44 67,38 75,38 C83,38 89,44 89,52 C89,60 83,66 75,66 C67,66 61,60 61,52z" />
+    <path
+        android:fillColor="#0D47A1"
+        android:pathData="M71,50 C71,46 73,43 77,43 C81,43 83,46 83,50 C83,54 81,57 77,57 C73,57 71,54 71,50z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M73,46 C73,45 74,44 75,44 C76,44 77,45 77,46 C77,47 76,48 75,48 C74,48 73,47 73,46z" />
+    <!-- Small "o" mouth (listening) -->
+    <path
+        android:fillColor="#1565C0"
+        android:pathData="M55,76 C55,72 58,70 62,70 C66,70 69,72 69,76 C69,80 66,82 62,82 C58,82 55,80 55,76z" />
+    <!-- Sound wave arcs on left -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#1E88E5"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M16,50 Q10,60 16,70" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#1E88E5"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M8,45 Q0,60 8,75" />
+    <!-- Sound wave arcs on right -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#1E88E5"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M104,50 Q110,60 104,70" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#1E88E5"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M112,45 Q120,60 112,75" />
+</vector>
