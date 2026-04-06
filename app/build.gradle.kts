@@ -121,9 +121,7 @@ android {
 
 }
 
-// One ONNX Runtime in the APK: `onnxruntime-android`. Sherpa’s AAR also ships libonnxruntime.so; we remove it so
-// libsherpa-onnx-jni + libonnxruntime4j_jni both use the same libonnxruntime.so.
-// Pin `libs.versions.toml` onnxruntimeAndroid to Sherpa’s build (v1.12.35 → onnxruntime 1.23.2 in build-android-arm64-v8a.sh).
+// Sherpa-ONNX AAR bundles libonnxruntime.so per ABI; we repack the AAR as-is (no second ORT dependency).
 // https://github.com/k2-fsa/sherpa-onnx/releases
 private val sherpaOnnxReleaseVersion = "1.12.35"
 private val sherpaOnnxAarFile = layout.projectDirectory.file("libs/sherpa-onnx-$sherpaOnnxReleaseVersion.aar")
@@ -157,7 +155,6 @@ tasks.register("prepareSherpaOnnxAppAar") {
                 JZipOutputStream(fos).use { zos ->
                     for (e in zf.entries()) {
                         if (e.isDirectory) continue
-                        if (e.name.startsWith("jni/") && e.name.endsWith("libonnxruntime.so")) continue
                         val outEntry = JZipEntry(e.name).apply { time = e.time }
                         zos.putNextEntry(outEntry)
                         zf.getInputStream(e).use { input -> input.copyTo(zos) }
@@ -206,16 +203,12 @@ dependencies {
 
     implementation(libs.lottie.compose)
 
-    implementation(libs.commons.compress)
-
     implementation(platform(libs.supabase.bom))
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.auth)
     implementation(libs.supabase.functions)
     implementation(libs.ktor.client.android)
     implementation(libs.kotlinx.serialization.json)
-
-    implementation(libs.onnxruntime.android)
 
     implementation(files(sherpaOnnxAppAarFile.asFile))
 
