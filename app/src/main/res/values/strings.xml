@@ -21,6 +21,9 @@
     <string name="auth_signup_subtitle">Choose an email and password to get started.</string>
     <string name="auth_switch_to_signup">Need an account? Sign up</string>
     <string name="auth_switch_to_login">Already have an account? Log in</string>
+    <string name="auth_error_invalid_email">Enter a valid email address</string>
+    <string name="auth_password_show">Show password</string>
+    <string name="auth_password_hide">Hide password</string>
     <string name="auth_error_required_email">Enter your email</string>
     <string name="auth_error_required_password">Enter your password</string>
     <string name="auth_error_required_confirm">Confirm your password</string>
@@ -47,10 +50,10 @@
     <string name="kitten_voice_model_hint">Kitten Nano English v0.2 (kitten-nano-en-v0_2-fp16)</string>
     <string name="kitten_voice_option">Voice %1$d</string>
     <string-array name="kitten_voice_names">
-        <item>Slot 0 — Soufflé (speakerId 0)</item>
-        <item>Slot 1 — Mochi (speakerId 1)</item>
-        <item>Slot 2 — Muffin (speakerId 2)</item>
-        <item>Slot 3 — Pudding (speakerId 3)</item>
+        <item>Soufflé</item>
+        <item>Mochi</item>
+        <item>Muffin</item>
+        <item>Pudding</item>
     </string-array>
     <string name="tts_volume_label">Speech volume</string>
     <string name="save_profile_to_cloud">Save name &amp; personality to account</string>

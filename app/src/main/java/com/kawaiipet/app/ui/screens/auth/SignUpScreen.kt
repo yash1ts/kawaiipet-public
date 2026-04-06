@@ -1,5 +1,6 @@
 package com.kawaiipet.app.ui.screens.auth
 
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,13 +33,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.kawaiipet.app.R
 import com.kawaiipet.app.ui.auth.AuthEmailViewModel
 import com.kawaiipet.app.ui.auth.AuthFormErrorBanner
+import com.kawaiipet.app.ui.auth.AuthInputValidation
+import com.kawaiipet.app.ui.auth.AuthPasswordOutlinedField
 import com.kawaiipet.app.ui.auth.toAuthUserMessage
 import com.kawaiipet.app.ui.navigation.AuthRoutes
 
@@ -109,42 +113,53 @@ fun SignUpScreen(
                 supportingText = emailError?.let { msg ->
                     { Text(msg, color = MaterialTheme.colorScheme.error) }
                 },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next,
+                ),
             )
             Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
+            AuthPasswordOutlinedField(
                 value = password,
                 onValueChange = {
                     password = it
                     passwordError = null
                     formError = null
+                    confirmError = when {
+                        confirmPassword.isNotEmpty() && it != confirmPassword ->
+                            context.getString(R.string.auth_error_password_mismatch)
+                        else -> null
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.password)) },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
                 enabled = !busy,
                 isError = passwordError != null,
                 supportingText = passwordError?.let { msg ->
                     { Text(msg, color = MaterialTheme.colorScheme.error) }
                 },
+                imeAction = ImeAction.Next,
             )
             Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
+            AuthPasswordOutlinedField(
                 value = confirmPassword,
                 onValueChange = {
                     confirmPassword = it
-                    confirmError = null
                     formError = null
+                    confirmError = when {
+                        it.isNotEmpty() && it != password ->
+                            context.getString(R.string.auth_error_password_mismatch)
+                        else -> null
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.confirm_password)) },
-                visualTransformation = PasswordVisualTransformation(),
-                singleLine = true,
                 enabled = !busy,
                 isError = confirmError != null,
                 supportingText = confirmError?.let { msg ->
                     { Text(msg, color = MaterialTheme.colorScheme.error) }
                 },
+                imeAction = ImeAction.Done,
             )
             Spacer(modifier = Modifier.height(20.dp))
 
@@ -163,17 +178,20 @@ fun SignUpScreen(
                         email.isBlank() -> {
                             emailError = context.getString(R.string.auth_error_required_email)
                         }
+                        !AuthInputValidation.isValidEmail(email) -> {
+                            emailError = context.getString(R.string.auth_error_invalid_email)
+                        }
                         password.isBlank() -> {
                             passwordError = context.getString(R.string.auth_error_required_password)
                         }
                         confirmPassword.isBlank() -> {
                             confirmError = context.getString(R.string.auth_error_required_confirm)
                         }
-                        password != confirmPassword -> {
-                            confirmError = context.getString(R.string.auth_error_password_mismatch)
-                        }
                         password.length < 6 -> {
                             passwordError = context.getString(R.string.auth_error_password_too_short)
+                        }
+                        password != confirmPassword -> {
+                            confirmError = context.getString(R.string.auth_error_password_mismatch)
                         }
                         else -> {
                             busy = true
