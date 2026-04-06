@@ -6,11 +6,9 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -23,22 +21,56 @@ import com.kawaiipet.app.pet.PetViewModel
 import com.kawaiipet.app.ui.theme.KawaiiPetTheme
 import com.kawaiipet.app.util.UiFeedback
 
-/** Space reserved above the pet so bubbles/text never change total layout height (pet stays fixed). */
-private val OverlayAbovePetHeight = 220.dp
+/** Match widest overlay chrome (e.g. [TextInputOverlay]). */
+private val OverlayChromeMaxWidth = 240.dp
 
-/** Match widest overlay chrome (e.g. [TextInputOverlay]) so the window does not span the full screen. */
-private val OverlayAbovePetMaxWidth = 240.dp
+/** Max height for bubble / listening UI above the pet. */
+private val OverlayChromeMaxHeight = 220.dp
 
+/** Space between the bottom of subtitle/bubble chrome and the bottom of the chrome window (above pet). */
+private val OverlayChromeBottomInset = 10.dp
+
+/**
+ * Bubble visibility must not depend on stale [responseText] after [OverlayState.Idle] (separate
+ * StateFlows / frame ordering). Only Speaking and Processing-with-text show the bubble; listening
+ * and text input use their own chrome.
+ */
+private fun bubbleVisible(state: OverlayState, responseText: String): Boolean {
+    return when (state) {
+        is OverlayState.Speaking -> true
+        is OverlayState.Processing -> responseText.isNotEmpty()
+        else -> false
+    }
+}
+
+/** Small composable tree for the pet-only overlay window (fixed size, does not grow with state). */
 @Composable
-fun OverlayContent(
+fun OverlayPetWindowContent(
     petViewModel: PetViewModel,
     animationController: PetAnimationController,
-    uiFeedback: UiFeedback,
     onDrag: (Float, Float) -> Unit,
     onPetDragStart: () -> Unit = {},
     onPetDragEnd: () -> Unit = {},
-    onRequestFocus: (Boolean) -> Unit,
     onDismiss: () -> Unit
+) {
+    KawaiiPetTheme(dynamicColor = false) {
+        PetOverlay(
+            animationController = animationController,
+            onTap = { petViewModel.onPetTapped() },
+            onDrag = onDrag,
+            onDragStart = onPetDragStart,
+            onDragEnd = onPetDragEnd,
+            onDoubleTap = onDismiss
+        )
+    }
+}
+
+/** Separate overlay window: bubbles, listening line, text input — sized to content only. */
+@Composable
+fun OverlayChromeWindowContent(
+    petViewModel: PetViewModel,
+    uiFeedback: UiFeedback,
+    onRequestFocus: (Boolean) -> Unit
 ) {
     val state by petViewModel.overlayState.collectAsState()
     val responseText by petViewModel.currentResponse.collectAsState()
@@ -46,77 +78,62 @@ fun OverlayContent(
 
     KawaiiPetTheme(dynamicColor = false) {
         Column(
-            modifier = Modifier.width(OverlayAbovePetMaxWidth),
+            modifier = Modifier
+                .widthIn(max = OverlayChromeMaxWidth)
+                .heightIn(max = OverlayChromeMaxHeight)
+                .padding(bottom = OverlayChromeBottomInset),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Box(
-                modifier = Modifier
-                    .width(OverlayAbovePetMaxWidth)
-                    .height(OverlayAbovePetHeight),
-                contentAlignment = Alignment.BottomCenter
+            AnimatedVisibility(
+                visible = state is OverlayState.Listening || state is OverlayState.PreparingVoice,
+                enter = fadeIn(animationSpec = tween(120)) + slideInVertically(animationSpec = tween(180)) { -it },
+                exit = fadeOut(animationSpec = tween(100)) + slideOutVertically(animationSpec = tween(140)) { -it }
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    AnimatedVisibility(
-                        visible = state is OverlayState.Listening || state is OverlayState.PreparingVoice,
-                        enter = fadeIn(animationSpec = tween(120)) + slideInVertically(animationSpec = tween(180)) { -it },
-                        exit = fadeOut(animationSpec = tween(100)) + slideOutVertically(animationSpec = tween(140)) { -it }
-                    ) {
-                        ListeningSubtitle(
-                            text = if (listeningSubtitle.isBlank()) {
-                                if (state is OverlayState.PreparingVoice) "Loading voice model…" else "Listening…"
-                            } else listeningSubtitle,
-                            isPlaceholder = listeningSubtitle.isBlank(),
-                            modifier = Modifier.widthIn(max = 220.dp)
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        visible = state is OverlayState.Speaking || responseText.isNotEmpty(),
-                        enter = fadeIn(animationSpec = tween(120)) + slideInVertically(animationSpec = tween(180)) { -it },
-                        exit = fadeOut(animationSpec = tween(100)) + slideOutVertically(animationSpec = tween(140)) { -it }
-                    ) {
-                        val bubbleText = when {
-                            responseText.isNotBlank() -> responseText
-                            state is OverlayState.Speaking -> "…"
-                            else -> ""
-                        }
-                        ChatBubble(
-                            text = bubbleText,
-                            modifier = Modifier.widthIn(max = 200.dp)
-                        )
-                    }
-
-                    AnimatedVisibility(
-                        visible = state is OverlayState.TextInput,
-                        enter = fadeIn(animationSpec = tween(120)) + slideInVertically(animationSpec = tween(180)) { it },
-                        exit = fadeOut(animationSpec = tween(100)) + slideOutVertically(animationSpec = tween(140)) { it }
-                    ) {
-                        TextInputOverlay(
-                            uiFeedback = uiFeedback,
-                            onSubmit = { text ->
-                                onRequestFocus(false)
-                                petViewModel.onTextSubmitted(text)
-                            },
-                            onDismiss = {
-                                uiFeedback.click()
-                                onRequestFocus(false)
-                                petViewModel.dismissTextInput()
-                            }
-                        )
-                    }
-                }
+                ListeningSubtitle(
+                    text = if (listeningSubtitle.isBlank()) {
+                        if (state is OverlayState.PreparingVoice) "Loading voice model…" else "Listening…"
+                    } else listeningSubtitle,
+                    isPlaceholder = listeningSubtitle.isBlank(),
+                    modifier = Modifier
+                        .widthIn(max = 220.dp)
+                        .padding(bottom = 6.dp)
+                )
             }
 
-            Spacer(modifier = Modifier.height(6.dp))
+            // No AnimatedVisibility: exit animation recomposed with Idle + empty text, ChatBubble
+            // early-returned, which broke exit and left the bubble stuck on screen.
+            if (bubbleVisible(state, responseText)) {
+                val bubbleText = when {
+                    responseText.isNotBlank() -> responseText
+                    state is OverlayState.Speaking -> "…"
+                    else -> ""
+                }
+                ChatBubble(
+                    text = bubbleText,
+                    modifier = Modifier
+                        .widthIn(max = 200.dp)
+                        .padding(bottom = 6.dp)
+                )
+            }
 
-            PetOverlay(
-                animationController = animationController,
-                onTap = { petViewModel.onPetTapped() },
-                onDrag = onDrag,
-                onDragStart = onPetDragStart,
-                onDragEnd = onPetDragEnd,
-                onDoubleTap = onDismiss
-            )
+            AnimatedVisibility(
+                visible = state is OverlayState.TextInput,
+                enter = fadeIn(animationSpec = tween(120)) + slideInVertically(animationSpec = tween(180)) { it },
+                exit = fadeOut(animationSpec = tween(100)) + slideOutVertically(animationSpec = tween(140)) { it }
+            ) {
+                TextInputOverlay(
+                    uiFeedback = uiFeedback,
+                    onSubmit = { text ->
+                        onRequestFocus(false)
+                        petViewModel.onTextSubmitted(text)
+                    },
+                    onDismiss = {
+                        uiFeedback.click()
+                        onRequestFocus(false)
+                        petViewModel.dismissTextInput()
+                    }
+                )
+            }
         }
     }
 }

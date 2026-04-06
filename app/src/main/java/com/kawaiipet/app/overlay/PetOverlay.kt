@@ -8,8 +8,12 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -17,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.LottieComposition
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
 import com.airbnb.lottie.compose.LottieConstants
@@ -35,6 +40,14 @@ fun PetOverlay(
     onDoubleTap: () -> Unit
 ) {
     val expression by animationController.expression.collectAsState()
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.Asset(expression.lottieAsset)
+    )
+    var lastComposition by remember { mutableStateOf<LottieComposition?>(null) }
+    LaunchedEffect(composition) {
+        if (composition != null) lastComposition = composition
+    }
+    val compositionToDraw = composition ?: lastComposition
 
     Box(
         contentAlignment = Alignment.Center,
@@ -68,17 +81,15 @@ fun PetOverlay(
                 .background(Color.Black.copy(alpha = 0.18f), ovalShape)
         )
 
-        val composition by rememberLottieComposition(
-            LottieCompositionSpec.Asset(expression.lottieAsset)
-        )
-
-        LottieAnimation(
-            composition = composition,
-            iterations = LottieConstants.IterateForever,
-            modifier = Modifier.size(PET_SIZE.dp),
-            alignment = Alignment.BottomCenter,
-            contentScale = ContentScale.Fit,
-            clipToCompositionBounds = false
-        )
+        if (compositionToDraw != null) {
+            LottieAnimation(
+                composition = compositionToDraw,
+                iterations = LottieConstants.IterateForever,
+                modifier = Modifier.size(PET_SIZE.dp),
+                alignment = Alignment.BottomCenter,
+                contentScale = ContentScale.Fit,
+                clipToCompositionBounds = false
+            )
+        }
     }
 }

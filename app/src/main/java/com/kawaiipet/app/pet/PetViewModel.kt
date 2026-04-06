@@ -147,6 +147,7 @@ class PetViewModel(
 
     fun onTextSubmitted(text: String) {
         if (text.isBlank()) {
+            _currentResponse.value = ""
             _overlayState.value = OverlayState.Idle
             return
         }
@@ -155,10 +156,12 @@ class PetViewModel(
     }
 
     fun dismissTextInput() {
+        _currentResponse.value = ""
         _overlayState.value = OverlayState.Idle
     }
 
     private suspend fun processText(userText: String) {
+        _currentResponse.value = ""
         _overlayState.value = OverlayState.Processing(userText)
         animationController.setExpression(PetExpression.THINKING)
         uiFeedback.petThinking()
@@ -255,9 +258,10 @@ class PetViewModel(
 
     private fun returnToIdle() {
         Log.d(TAG, "State → IDLE")
-        _overlayState.value = OverlayState.Idle
+        stopMouthAnimation()
         _currentResponse.value = ""
         _listeningSubtitle.value = ""
+        _overlayState.value = OverlayState.Idle
         animationController.setExpression(PetExpression.IDLE)
     }
 

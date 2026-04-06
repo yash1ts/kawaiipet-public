@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
+import android.view.View
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
@@ -50,10 +52,14 @@ class OverlayService : Service() {
     private val serviceScope = CoroutineScope(serviceJob + Dispatchers.Main.immediate)
 
     private lateinit var windowManager: WindowManager
-    private var overlayView: ComposeView? = null
+    private var petOverlayView: ComposeView? = null
+    private var chromeOverlayView: ComposeView? = null
     private val lifecycleOwner = OverlayLifecycleOwner()
     private lateinit var petViewModel: PetViewModel
-    private lateinit var overlayLayoutParams: WindowManager.LayoutParams
+    private lateinit var petLayoutParams: WindowManager.LayoutParams
+    private lateinit var chromeLayoutParams: WindowManager.LayoutParams
+    private val petScreenLoc = IntArray(2)
+    private val chromePositionListener = ViewTreeObserver.OnGlobalLayoutListener { syncChromePosition() }
     private var closeDragHintView: ComposeView? = null
 
     override fun onCreate() {
@@ -102,13 +108,18 @@ class OverlayService : Service() {
         return ViewModelProvider(lifecycleOwner, factory)[PetViewModel::class.java]
     }
 
+    private fun overlayFlags(focusable: Boolean): Int {
+        val base = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        return if (focusable) base else base or WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+    }
+
     private fun attachOverlay() {
-        overlayLayoutParams = WindowManager.LayoutParams(
+        petLayoutParams = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            overlayFlags(focusable = false),
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -116,27 +127,38 @@ class OverlayService : Service() {
             y = 300
         }
 
-        overlayView = ComposeView(this).apply {
+        chromeLayoutParams = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            overlayFlags(focusable = false),
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            x = 100
+            y = 300
+        }
+
+        petOverlayView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(lifecycleOwner)
             setViewTreeViewModelStoreOwner(lifecycleOwner)
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
 
             setContent {
-                OverlayContent(
+                OverlayPetWindowContent(
                     petViewModel = petViewModel,
                     animationController = animationController,
-                    uiFeedback = uiFeedback,
                     onDrag = { dx, dy ->
-                        overlayLayoutParams.x += dx.toInt()
-                        overlayLayoutParams.y += dy.toInt()
-                        windowManager.updateViewLayout(this, overlayLayoutParams)
+                        petLayoutParams.x += dx.toInt()
+                        petLayoutParams.y += dy.toInt()
+                        windowManager.updateViewLayout(this, petLayoutParams)
+                        post { syncChromePosition() }
                     },
                     onPetDragStart = { showCloseDragHint() },
                     onPetDragEnd = {
                         tryDismissIfReleasedOverCloseHint()
                         hideCloseDragHint()
                     },
-                    onRequestFocus = { focusable -> setFocusable(focusable) },
                     onDismiss = {
                         uiFeedback.click()
                         stopSelf()
@@ -145,7 +167,69 @@ class OverlayService : Service() {
             }
         }
 
-        windowManager.addView(overlayView, overlayLayoutParams)
+        chromeOverlayView = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(lifecycleOwner)
+            setViewTreeViewModelStoreOwner(lifecycleOwner)
+            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+
+            setContent {
+                OverlayChromeWindowContent(
+                    petViewModel = petViewModel,
+                    uiFeedback = uiFeedback,
+                    onRequestFocus = { focusable -> setChromeFocusable(focusable) }
+                )
+            }
+        }
+
+        windowManager.addView(petOverlayView, petLayoutParams)
+        chromeOverlayView?.visibility = View.GONE
+        windowManager.addView(chromeOverlayView, chromeLayoutParams)
+
+        serviceScope.launch {
+            petViewModel.overlayState.collect { updateChromeWindowVisibility(it) }
+        }
+
+        petOverlayView?.post { syncChromePosition() }
+        chromeOverlayView?.viewTreeObserver?.addOnGlobalLayoutListener(chromePositionListener)
+    }
+
+    private fun chromeWindowShowsUi(state: OverlayState): Boolean = when (state) {
+        is OverlayState.Idle, is OverlayState.Minimized -> false
+        else -> true
+    }
+
+    /** GONE when idle so the system overlay cannot keep drawing a stale chat bubble buffer. */
+    private fun updateChromeWindowVisibility(state: OverlayState) {
+        val chrome = chromeOverlayView ?: return
+        val show = chromeWindowShowsUi(state)
+        val targetVis = if (show) View.VISIBLE else View.GONE
+        if (chrome.visibility != targetVis) {
+            chrome.visibility = targetVis
+        }
+        if (show) {
+            chrome.post { syncChromePosition() }
+        }
+    }
+
+    /** Centers the chrome window on the pet; Y uses CHROME_PET_GAP_DP below the pet window top. */
+    private fun syncChromePosition() {
+        val pet = petOverlayView ?: return
+        val chrome = chromeOverlayView ?: return
+        if (chrome.visibility != View.VISIBLE) return
+        if (pet.width <= 0 || pet.height <= 0) return
+
+        pet.getLocationOnScreen(petScreenLoc)
+        val gapPx = (CHROME_PET_GAP_DP * resources.displayMetrics.density).roundToInt()
+        val newX = petScreenLoc[0] + (pet.width - chrome.width) / 2
+        val newY = petScreenLoc[1] - gapPx - chrome.height
+
+        chromeLayoutParams.x = newX
+        chromeLayoutParams.y = newY
+        try {
+            windowManager.updateViewLayout(chrome, chromeLayoutParams)
+        } catch (e: Exception) {
+            Log.w(TAG, "sync chrome overlay position", e)
+        }
     }
 
     private fun closeStripHeightPx(): Int =
@@ -174,6 +258,7 @@ class OverlayService : Service() {
             heightPx,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
@@ -195,7 +280,7 @@ class OverlayService : Service() {
     }
 
     private fun tryDismissIfReleasedOverCloseHint() {
-        val main = overlayView ?: return
+        val main = petOverlayView ?: return
         val loc = IntArray(2)
         main.getLocationOnScreen(loc)
         val contentBottom = loc[1] + main.height
@@ -206,14 +291,9 @@ class OverlayService : Service() {
         }
     }
 
-    private fun setFocusable(focusable: Boolean) {
-        overlayLayoutParams.flags = if (focusable) {
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        } else {
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        }
-        overlayView?.let { windowManager.updateViewLayout(it, overlayLayoutParams) }
+    private fun setChromeFocusable(focusable: Boolean) {
+        chromeLayoutParams.flags = overlayFlags(focusable)
+        chromeOverlayView?.let { windowManager.updateViewLayout(it, chromeLayoutParams) }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -226,8 +306,15 @@ class OverlayService : Service() {
         serviceJob.cancel()
         petViewModel.cleanup()
         hideCloseDragHint()
-        overlayView?.let { windowManager.removeView(it) }
-        overlayView = null
+        chromeOverlayView?.viewTreeObserver?.let { obs ->
+            if (obs.isAlive) {
+                obs.removeOnGlobalLayoutListener(chromePositionListener)
+            }
+        }
+        chromeOverlayView?.let { windowManager.removeView(it) }
+        chromeOverlayView = null
+        petOverlayView?.let { windowManager.removeView(it) }
+        petOverlayView = null
         lifecycleOwner.onPause()
         lifecycleOwner.onStop()
         lifecycleOwner.onDestroy()
@@ -254,5 +341,11 @@ class OverlayService : Service() {
         private const val TAG = "OverlayService"
         private const val NOTIFICATION_ID = 1
         private const val CLOSE_STRIP_HEIGHT_DP = 140f
+        /**
+         * Vertical gap from the top of the pet window to the bottom of the chrome window.
+         * Lottie can draw above its layout box, so keep this large enough that bubble/listening
+         * chrome clears the visible character.
+         */
+        private const val CHROME_PET_GAP_DP = 40f
     }
 }
