@@ -12,6 +12,8 @@ import com.kawaiipet.app.util.PermissionHelper
 import com.kawaiipet.app.util.PreferenceManager
 import com.kawaiipet.app.util.Analytics
 import com.kawaiipet.app.util.UiFeedback
+import kotlinx.coroutines.CancellationException
+import java.io.FileNotFoundException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 class PetViewModel(
     private val appContext: Context,
@@ -45,6 +48,12 @@ class PetViewModel(
     private val emotionDurationMs = 2200L
 
     fun onPetTapped() {
+        if (_overlayState.value is OverlayState.Processing) {
+            uiFeedback.click()
+            currentJob?.cancel()
+            returnToIdle()
+            return
+        }
         if (_overlayState.value !is OverlayState.Idle) return
 
         uiFeedback.click()
@@ -122,6 +131,8 @@ class PetViewModel(
                     }
                     else -> processText(userText)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "onPetTapped failed", e)
                 _currentResponse.value = "Couldn't hear you — try again?"
@@ -154,7 +165,20 @@ class PetViewModel(
         Log.d(TAG, "State → PROCESSING/THINKING")
 
         try {
-            val response = conversationManager.processUserInput(userText)
+            val response = withTimeoutOrNull(LLM_TIMEOUT_MS) {
+                conversationManager.processUserInput(userText)
+            }
+            if (response == null) {
+                Log.w(TAG, "processUserInput timed out after ${LLM_TIMEOUT_MS}ms")
+                _currentResponse.value =
+                    "That took too long. Check your connection and tap again."
+                animationController.setExpression(PetExpression.SAD)
+                uiFeedback.softNegative()
+                _overlayState.value = OverlayState.Speaking(_currentResponse.value)
+                delay(emotionDurationMs)
+                returnToIdle()
+                return
+            }
             Analytics.capture(
                 event = "ai response received",
                 properties = mapOf(
@@ -162,17 +186,20 @@ class PetViewModel(
                     "response_length" to response.text.length,
                 ),
             )
+            val speakText = response.text.trim().ifBlank {
+                "Hmm, I'm here!"
+            }
             _currentResponse.value = ""
             animationController.setExpression(PetExpression.TALKING)
-            _overlayState.value = OverlayState.Speaking(response.text)
+            _overlayState.value = OverlayState.Speaking(speakText)
             Log.d(TAG, "State → SPEAKING/TALKING")
 
             uiFeedback.petSpeakingStart()
             startMouthAnimation()
-            audioPipeline.speak(response.text) { partial ->
+            audioPipeline.speak(speakText) { partial ->
                 _currentResponse.value = partial
             }
-            _currentResponse.value = response.text
+            _currentResponse.value = speakText
             stopMouthAnimation()
 
             animationController.setExpression(response.expression)
@@ -181,9 +208,25 @@ class PetViewModel(
             }
             Log.d(TAG, "State → EMOTION(${response.expression})")
             delay(emotionDurationMs)
+        } catch (e: CancellationException) {
+            returnToIdle()
+            throw e
+        } catch (e: FileNotFoundException) {
+            Log.e(TAG, "processText failed (missing file)", e)
+            _currentResponse.value =
+                "A file is missing. Check Logcat tag PetViewModel. [sad]"
+            animationController.setExpression(PetExpression.SAD)
+            uiFeedback.softNegative()
+            _overlayState.value = OverlayState.Speaking(_currentResponse.value)
+            delay(emotionDurationMs)
         } catch (e: Exception) {
             Log.e(TAG, "processText failed", e)
-            _currentResponse.value = "Something went wrong..."
+            val tail = e.message?.trim()?.replace('\n', ' ')?.take(90)
+            _currentResponse.value = if (tail.isNullOrBlank()) {
+                "Something went wrong… See Logcat PetViewModel for the error. [sad]"
+            } else {
+                "Something went wrong: $tail [sad]"
+            }
             animationController.setExpression(PetExpression.SAD)
             uiFeedback.softNegative()
             _overlayState.value = OverlayState.Speaking(_currentResponse.value)
@@ -221,6 +264,7 @@ class PetViewModel(
     fun cleanup() {
         currentJob?.cancel()
         mouthAnimJob?.cancel()
+        returnToIdle()
         audioPipeline.release()
     }
 
@@ -231,5 +275,7 @@ class PetViewModel(
 
     companion object {
         private const val TAG = "PetViewModel"
+        /** Cap wait so a stuck network call does not leave the UI in Processing forever. */
+        private const val LLM_TIMEOUT_MS = 180_000L
     }
 }

@@ -1,7 +1,8 @@
 package com.kawaiipet.app.util
 
 import android.content.Context
-import com.kawaiipet.app.audio.BundledVoiceModels
+import com.kawaiipet.app.audio.DefaultVoiceModels
+import com.kawaiipet.app.llm.LlmPromptDefaults
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -19,10 +20,10 @@ class PreferenceManager(private val context: Context) {
 
     val petName: Flow<String> = context.dataStore.data.map { it[Keys.PET_NAME] ?: "Mochi" }
     val sttModelId: Flow<String> = context.dataStore.data.map {
-        it[Keys.STT_MODEL_ID] ?: BundledVoiceModels.STT_MODEL_ID
+        it[Keys.STT_MODEL_ID] ?: DefaultVoiceModels.STT_MODEL_ID
     }
     val ttsModelId: Flow<String> = context.dataStore.data.map {
-        it[Keys.TTS_MODEL_ID] ?: BundledVoiceModels.TTS_MODEL_ID
+        it[Keys.TTS_MODEL_ID] ?: DefaultVoiceModels.TTS_MODEL_ID
     }
     val personalityPrompt: Flow<String> = context.dataStore.data.map {
         it[Keys.PERSONALITY] ?: DEFAULT_PERSONALITY
@@ -78,10 +79,6 @@ class PreferenceManager(private val context: Context) {
     }
 
     companion object {
-        const val DEFAULT_PERSONALITY =
-            "You are a cute, friendly virtual pet. You speak in a warm, playful tone. " +
-            "You remember things the user tells you and bring them up naturally. " +
-            "Keep responses concise (1-3 sentences). " +
-            "End every response with an emotion tag: [happy], [sad], [thinking], or [idle]."
+        val DEFAULT_PERSONALITY: String = LlmPromptDefaults.DEFAULT_PERSONALITY
     }
 }

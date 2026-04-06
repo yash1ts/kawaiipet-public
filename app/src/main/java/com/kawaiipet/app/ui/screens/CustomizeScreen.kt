@@ -33,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -162,7 +163,13 @@ fun CustomizeScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Text(stringResource(R.string.kitten_voice_label), style = MaterialTheme.typography.labelLarge)
-            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = stringResource(R.string.kitten_voice_model_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            val voiceNames = stringArrayResource(R.array.kitten_voice_names)
             kittenVoiceOptions.forEach { sid ->
                 Row(
                     modifier = Modifier
@@ -180,7 +187,8 @@ fun CustomizeScreen(
                         onClick = null,
                     )
                     Text(
-                        text = stringResource(R.string.kitten_voice_option, sid + 1),
+                        text = voiceNames.getOrNull(sid)
+                            ?: stringResource(R.string.kitten_voice_option, sid + 1),
                         modifier = Modifier.padding(start = 8.dp),
                     )
                 }

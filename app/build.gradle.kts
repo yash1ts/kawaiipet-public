@@ -1,5 +1,10 @@
+import java.io.File
+import java.io.FileOutputStream
 import java.net.URI
 import java.util.Properties
+import java.util.zip.ZipEntry as JZipEntry
+import java.util.zip.ZipFile as JZipFile
+import java.util.zip.ZipOutputStream as JZipOutputStream
 
 plugins {
     alias(libs.plugins.android.application)
@@ -109,12 +114,20 @@ android {
         compose = true
         buildConfig = true
     }
+
+    androidResources {
+        noCompress += listOf("onnx", "ort")
+    }
+
 }
 
-// Official k2fsa AAR (16 KB page-size–aligned native libs). Not on Maven Central; fetched on first build.
-// See: https://github.com/k2-fsa/sherpa-onnx/releases
+// One ONNX Runtime in the APK: `onnxruntime-android`. Sherpa’s AAR also ships libonnxruntime.so; we remove it so
+// libsherpa-onnx-jni + libonnxruntime4j_jni both use the same libonnxruntime.so.
+// Pin `libs.versions.toml` onnxruntimeAndroid to Sherpa’s build (v1.12.35 → onnxruntime 1.23.2 in build-android-arm64-v8a.sh).
+// https://github.com/k2-fsa/sherpa-onnx/releases
 private val sherpaOnnxReleaseVersion = "1.12.35"
 private val sherpaOnnxAarFile = layout.projectDirectory.file("libs/sherpa-onnx-$sherpaOnnxReleaseVersion.aar")
+private val sherpaOnnxAppAarFile = layout.projectDirectory.file("libs/sherpa-onnx-$sherpaOnnxReleaseVersion-app.aar")
 
 tasks.register("downloadSherpaOnnxAar") {
     val out = sherpaOnnxAarFile.asFile
@@ -131,78 +144,33 @@ tasks.register("downloadSherpaOnnxAar") {
     }
 }
 
-/**
- * Fetches Sherpa-compatible Moonshine Tiny EN (quantized / int8-style) and Kitten Nano EN v0.2 into assets.
- * Hugging Face Moonshine int8 + KittenML 0.8 ONNX are not Sherpa-JNI compatible; see BundledVoiceModels.kt.
- */
-tasks.register("prepareBundledVoiceModels") {
-    val moonUrl =
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/" +
-            "sherpa-onnx-moonshine-tiny-en-quantized-2026-02-27.tar.bz2"
-    val kittenUrl =
-        "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kitten-nano-en-v0_2-fp16.tar.bz2"
-
-    val moonTar = layout.buildDirectory.file("tmp/bundled-voice/moonshine.tar.bz2").get().asFile
-    val kittenTar = layout.buildDirectory.file("tmp/bundled-voice/kitten.tar.bz2").get().asFile
-    val sttOut = layout.projectDirectory.dir("src/main/assets/voice_models/stt").asFile
-    val ttsOut =
-        layout.projectDirectory.dir("src/main/assets/voice_models/tts/kitten-nano-en-v0_2-fp16").asFile
-    val revisionFile = layout.projectDirectory.file("src/main/assets/voice_models/REVISION").asFile
-
-    outputs.dir(sttOut)
-    outputs.dir(ttsOut)
-    outputs.file(revisionFile)
-
+tasks.register("prepareSherpaOnnxAppAar") {
+    dependsOn("downloadSherpaOnnxAar")
+    val src = sherpaOnnxAarFile.asFile
+    val dst = sherpaOnnxAppAarFile.asFile
+    inputs.file(src)
+    outputs.file(dst)
     doLast {
-        moonTar.parentFile?.mkdirs()
-
-        fun downloadIfNeeded(url: String, dest: File) {
-            if (dest.exists() && dest.length() > 512L * 1024L) return
-            dest.parentFile?.mkdirs()
-            URI(url).toURL().openStream().use { input ->
-                dest.outputStream().use { output -> input.copyTo(output) }
+        dst.parentFile?.mkdirs()
+        JZipFile(src).use { zf ->
+            FileOutputStream(dst).use { fos ->
+                JZipOutputStream(fos).use { zos ->
+                    for (e in zf.entries()) {
+                        if (e.isDirectory) continue
+                        if (e.name.startsWith("jni/") && e.name.endsWith("libonnxruntime.so")) continue
+                        val outEntry = JZipEntry(e.name).apply { time = e.time }
+                        zos.putNextEntry(outEntry)
+                        zf.getInputStream(e).use { input -> input.copyTo(zos) }
+                        zos.closeEntry()
+                    }
+                }
             }
         }
-        downloadIfNeeded(moonUrl, moonTar)
-        downloadIfNeeded(kittenUrl, kittenTar)
-
-        val moonExtractRoot = layout.buildDirectory.dir("tmp/bundled-voice/moonshine_extract").get().asFile
-        moonExtractRoot.deleteRecursively()
-        moonExtractRoot.mkdirs()
-        exec {
-            commandLine("tar", "-xjf", moonTar.absolutePath, "-C", moonExtractRoot.absolutePath)
-        }
-        val moonInner = moonExtractRoot.listFiles()?.singleOrNull()
-            ?: error("prepareBundledVoiceModels: expected one root directory in moonshine archive")
-        sttOut.mkdirs()
-        copy {
-            from(moonInner) {
-                include("encoder_model.ort", "decoder_model_merged.ort", "tokens.txt")
-            }
-            into(sttOut)
-        }
-
-        val kittenExtractRoot = layout.buildDirectory.dir("tmp/bundled-voice/kitten_extract").get().asFile
-        kittenExtractRoot.deleteRecursively()
-        kittenExtractRoot.mkdirs()
-        exec {
-            commandLine("tar", "-xjf", kittenTar.absolutePath, "-C", kittenExtractRoot.absolutePath)
-        }
-        val kittenInner = kittenExtractRoot.listFiles()?.singleOrNull()
-            ?: error("prepareBundledVoiceModels: expected one root directory in kitten archive")
-        ttsOut.deleteRecursively()
-        copy {
-            from(kittenInner)
-            into(ttsOut)
-        }
-
-        revisionFile.parentFile?.mkdirs()
-        revisionFile.writeText("1")
     }
 }
 
 tasks.named("preBuild").configure {
-    dependsOn("downloadSherpaOnnxAar", "prepareBundledVoiceModels")
+    dependsOn("prepareSherpaOnnxAppAar")
 }
 
 dependencies {
@@ -247,7 +215,9 @@ dependencies {
     implementation(libs.ktor.client.android)
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(files(sherpaOnnxAarFile.asFile))
+    implementation(libs.onnxruntime.android)
+
+    implementation(files(sherpaOnnxAppAarFile.asFile))
 
     implementation(libs.posthog.android)
 }

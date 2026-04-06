@@ -17,7 +17,9 @@ activityCompose = "1.9.3"
 coreKtx = "1.15.0"
 commonsCompress = "1.26.2"
 posthog = "3.31.0"
-
+# Must match Sherpa-ONNX Android build (see k2-fsa/sherpa-onnx build-android-arm64-v8a.sh: onnxruntime_version).
+# 1.22+ also satisfies 16 KB page-size Play requirement.
+onnxruntimeAndroid = "1.23.2"
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -60,7 +62,7 @@ supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt", ve
 supabase-functions = { group = "io.github.jan-tennert.supabase", name = "functions-kt", version.ref = "supabase" }
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serialization" }
-
+onnxruntime-android = { group = "com.microsoft.onnxruntime", name = "onnxruntime-android", version.ref = "onnxruntimeAndroid" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }

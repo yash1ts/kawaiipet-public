@@ -1,5 +1,6 @@
 -keepclassmembers class * extends com.google.protobuf.GeneratedMessageLite { <fields>; }
 -keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep class ai.onnxruntime.** { *; }
 
 # Kotlin serialization (edge function DTOs, Supabase KotlinXSerializer)
 -keepattributes *Annotation*, InnerClasses

@@ -1,5 +1,6 @@
 package com.kawaiipet.app.llm
 
+import android.util.Log
 import com.kawaiipet.app.memory.FactMatcher
 import com.kawaiipet.app.memory.MemoryRepository
 import com.kawaiipet.app.memory.ShortTermMemory
@@ -31,20 +32,53 @@ class ConversationManager @Inject constructor(
         val factTexts = relevantFacts.map { it.factText }
 
         val rawResponse = llmService.chat(messages, factTexts)
+        Log.d(
+            TAG,
+            "llm raw (${rawResponse.length} chars): ${rawResponse.toOneLineLog()}",
+        )
         val (cleanText, expression) = parseEmotionTag(rawResponse)
+        val spokenText = ensureSpeakable(cleanText, rawResponse)
+        Log.d(
+            TAG,
+            "llm parsed: expression=$expression cleanLen=${cleanText.length} " +
+                "clean=${cleanText.toOneLineLog()} → spokenLen=${spokenText.length} spoken=${spokenText.toOneLineLog()}",
+        )
 
-        shortTermMemory.addMessage(ChatMessage(Role.ASSISTANT, cleanText))
+        shortTermMemory.addMessage(ChatMessage(Role.ASSISTANT, spokenText))
 
-        factExtractor.extractAndStoreAsync(text, cleanText)
+        factExtractor.extractAndStoreAsync(text, spokenText)
 
-        return LlmResponse(cleanText, expression)
+        return LlmResponse(spokenText, expression)
     }
 
     fun clearConversation() {
         shortTermMemory.clear()
     }
 
+    /**
+     * [AudioPipeline.speak] skips blank strings. If the model returns only an emotion tag, we still speak a short line.
+     */
+    private fun ensureSpeakable(cleanText: String, rawResponse: String): String {
+        val t = cleanText.trim()
+        if (t.any { it.isLetterOrDigit() }) return t
+        Log.w(
+            TAG,
+            "No speakable text after emotion tags (raw=${rawResponse.take(160).replace('\n', ' ')})",
+        )
+        return DEFAULT_SPOKEN_REPLY
+    }
+
     companion object {
+        private const val TAG = "ConversationManager"
+        private const val DEFAULT_SPOKEN_REPLY = "Okay!"
+        private const val LOG_SNIP_LEN = 200
+
+        private fun String.toOneLineLog(): String =
+            replace('\n', ' ')
+                .replace(Regex("\\s+"), " ")
+                .trim()
+                .take(LOG_SNIP_LEN)
+
         private val EMOTION_TAG_REGEX = "\\[(happy|sad|angry|thinking|idle|listening|talking|sleeping)\\]"
             .toRegex(RegexOption.IGNORE_CASE)
 

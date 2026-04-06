@@ -1,8 +1,6 @@
 package com.kawaiipet.app.di
 
 import android.content.Context
-import com.kawaiipet.app.llm.LlmService
-import com.kawaiipet.app.llm.SupabaseLlmService
 import com.kawaiipet.app.memory.db.AppDatabase
 import com.kawaiipet.app.util.PreferenceManager
 import com.kawaiipet.app.memory.db.FactDao
@@ -31,8 +29,4 @@ object AppModule {
     @Singleton
     fun providePreferenceManager(@ApplicationContext context: Context): PreferenceManager =
         PreferenceManager(context)
-
-    @Provides
-    @Singleton
-    fun provideLlmService(impl: SupabaseLlmService): LlmService = impl
 }

@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.yield
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -88,7 +89,10 @@ class AudioPipeline(
      */
     suspend fun awaitPetVoiceEnginesReady(timeoutMs: Long = 90_000L) {
         withTimeoutOrNull(timeoutMs) {
-            petVoicePrepareJob?.join()
+            while (petVoicePrepareJob == null) {
+                yield()
+            }
+            petVoicePrepareJob!!.join()
         }
     }
 

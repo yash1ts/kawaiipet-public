@@ -3,7 +3,6 @@ package com.kawaiipet.app.audio
 import android.content.Context
 import android.util.Log
 import java.io.File
-import java.io.FileOutputStream
 
 class ModelManager(private val context: Context) {
 
@@ -11,83 +10,6 @@ class ModelManager(private val context: Context) {
         get() = File(context.filesDir, "models").also { it.mkdirs() }
 
     fun getModelDir(modelId: String): File = File(modelsDir, modelId)
-
-    /**
-     * Copies [BundledVoiceModels.ASSET_STT_DIR] and [BundledVoiceModels.ASSET_TTS_DIR] into
-     * [getModelDir] when missing or when the on-disk revision differs from [BundledVoiceModels.EXPECTED_ASSET_REVISION].
-     */
-    fun ensureBundledModelsFromAssets(): Boolean {
-        val expectedRev = readExpectedRevisionFromAssets() ?: run {
-            Log.e(TAG, "Missing ${BundledVoiceModels.ASSET_REVISION_ASSET_PATH} in assets")
-            return false
-        }
-        if (expectedRev != BundledVoiceModels.EXPECTED_ASSET_REVISION) {
-            Log.e(TAG, "Asset REVISION mismatch: asset=$expectedRev expected=${BundledVoiceModels.EXPECTED_ASSET_REVISION}")
-            return false
-        }
-
-        val revMarker = File(modelsDir, BUNDLED_REVISION_MARKER)
-        val sttDir = getModelDir(BundledVoiceModels.STT_MODEL_ID)
-        val ttsDir = getModelDir(BundledVoiceModels.TTS_MODEL_ID)
-        val upToDate = revMarker.isFile &&
-            revMarker.readText().trim() == BundledVoiceModels.EXPECTED_ASSET_REVISION &&
-            hasUsableMoonshineLayout(sttDir) &&
-            hasUsableKittenLayout(ttsDir)
-
-        if (upToDate) return true
-
-        return try {
-            sttDir.deleteRecursively()
-            ttsDir.deleteRecursively()
-            copyAssetDirectory(BundledVoiceModels.ASSET_STT_DIR, sttDir)
-            copyAssetDirectory(BundledVoiceModels.ASSET_TTS_DIR, ttsDir)
-            File(sttDir, MARKER_FILE).writeText("1")
-            File(ttsDir, MARKER_FILE).writeText("1")
-            revMarker.writeText(BundledVoiceModels.EXPECTED_ASSET_REVISION)
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "ensureBundledModelsFromAssets failed", e)
-            sttDir.deleteRecursively()
-            ttsDir.deleteRecursively()
-            false
-        }
-    }
-
-    private fun readExpectedRevisionFromAssets(): String? = try {
-        context.assets.open(BundledVoiceModels.ASSET_REVISION_ASSET_PATH).bufferedReader().use { it.readText().trim() }
-    } catch (_: Exception) {
-        null
-    }
-
-    private fun copyAssetDirectory(assetPath: String, destDir: File) {
-        val am = context.assets
-        val children = am.list(assetPath) ?: emptyArray()
-        if (children.isEmpty()) {
-            destDir.parentFile?.mkdirs()
-            am.open(assetPath).use { input ->
-                FileOutputStream(destDir).use { input.copyTo(it) }
-            }
-            return
-        }
-        destDir.mkdirs()
-        for (child in children) {
-            val sub = "$assetPath/$child"
-            val nextDest = File(destDir, child)
-            val subChildren = am.list(sub) ?: emptyArray()
-            if (subChildren.isEmpty()) {
-                nextDest.parentFile?.mkdirs()
-                am.open(sub).use { inp -> FileOutputStream(nextDest).use { inp.copyTo(it) } }
-            } else {
-                copyAssetDirectory(sub, nextDest)
-            }
-        }
-    }
-
-    private fun hasUsableMoonshineLayout(dir: File): Boolean =
-        resolveSherpaMoonshineFromRoot(dir) != null
-
-    private fun hasUsableKittenLayout(dir: File): Boolean =
-        resolveSherpaKittenTtsFromRoot(dir) != null
 
     fun resolveSherpaStreamingTransducer(modelId: String): SherpaStreamingTransducerPaths? {
         val base = getModelDir(modelId)
@@ -236,7 +158,6 @@ class ModelManager(private val context: Context) {
     companion object {
         private const val TAG = "ModelManager"
         private const val MARKER_FILE = ".kawaiipet_model_ok"
-        private const val BUNDLED_REVISION_MARKER = ".bundled_voice_revision"
 
         private fun pickSherpaOnnx(dir: File, role: String): File? {
             val files = dir.listFiles() ?: return null

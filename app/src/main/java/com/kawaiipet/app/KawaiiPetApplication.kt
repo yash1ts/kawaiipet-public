@@ -4,7 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import com.kawaiipet.app.BuildConfig
-import com.kawaiipet.app.audio.BundledVoiceLoader
+import com.kawaiipet.app.audio.VoiceEngineWarmup
 import com.posthog.android.PostHogAndroid
 import com.posthog.android.PostHogAndroidConfig
 import dagger.hilt.android.HiltAndroidApp
@@ -13,7 +13,7 @@ import javax.inject.Inject
 @HiltAndroidApp
 class KawaiiPetApplication : Application() {
 
-    @Inject lateinit var bundledVoiceLoader: BundledVoiceLoader
+    @Inject lateinit var voiceEngineWarmup: VoiceEngineWarmup
 
     override fun onCreate() {
         super.onCreate()
@@ -22,7 +22,7 @@ class KawaiiPetApplication : Application() {
             val host = BuildConfig.POSTHOG_HOST.trim().ifEmpty { "https://us.i.posthog.com" }
             PostHogAndroid.setup(this, PostHogAndroidConfig(apiKey = apiKey, host = host))
         }
-        bundledVoiceLoader.startWarmup()
+        voiceEngineWarmup.startWarmup()
         createNotificationChannel()
     }
 

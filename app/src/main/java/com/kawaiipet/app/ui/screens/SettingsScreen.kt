@@ -111,7 +111,7 @@ fun SettingsScreen(
                 text = stringResource(R.string.signed_in_as, signedInEmail ?: "—"),
                 style = MaterialTheme.typography.bodyLarge,
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             OutlinedButton(
                 onClick = {

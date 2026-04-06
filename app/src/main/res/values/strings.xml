@@ -21,8 +21,18 @@
     <string name="auth_signup_subtitle">Choose an email and password to get started.</string>
     <string name="auth_switch_to_signup">Need an account? Sign up</string>
     <string name="auth_switch_to_login">Already have an account? Log in</string>
+    <string name="auth_error_required_email">Enter your email</string>
+    <string name="auth_error_required_password">Enter your password</string>
+    <string name="auth_error_required_confirm">Confirm your password</string>
+    <string name="auth_error_password_mismatch">Passwords do not match</string>
+    <string name="auth_error_password_too_short">Use at least 6 characters</string>
+    <string name="auth_error_generic">Something went wrong. Try again.</string>
+    <string name="auth_error_invalid_credentials">Wrong email or password.</string>
+    <string name="auth_error_email_in_use">This email is already registered. Try logging in.</string>
+    <string name="auth_error_confirm_email">Confirm your email from the link we sent, then try again.</string>
+    <string name="auth_error_network">Check your connection and try again.</string>
     <string name="confirm_password">Confirm password</string>
-    <string name="account_sign_in_hint">Sign in so your pet can use the cloud assistant (Supabase + Gemini).</string>
+    <string name="account_sign_in_hint">Sign in to chat with your pet (Supabase + Gemini).</string>
     <string name="email">Email</string>
     <string name="password">Password</string>
     <string name="sign_in">Sign in</string>
@@ -33,8 +43,15 @@
     <string name="pet_name_hint">Give your pet a name</string>
     <string name="pet_personality_label">Personality</string>
     <string name="pet_personality_hint">Describe your pet\'s personality</string>
-    <string name="kitten_voice_label">Kitten voice</string>
+    <string name="kitten_voice_label">Pet voice</string>
+    <string name="kitten_voice_model_hint">Kitten Nano English v0.2 (kitten-nano-en-v0_2-fp16)</string>
     <string name="kitten_voice_option">Voice %1$d</string>
+    <string-array name="kitten_voice_names">
+        <item>Slot 0 — Soufflé (speakerId 0)</item>
+        <item>Slot 1 — Mochi (speakerId 1)</item>
+        <item>Slot 2 — Muffin (speakerId 2)</item>
+        <item>Slot 3 — Pudding (speakerId 3)</item>
+    </string-array>
     <string name="tts_volume_label">Speech volume</string>
     <string name="save_profile_to_cloud">Save name &amp; personality to account</string>
     <string name="sign_in_to_sync_profile">Log in from the start screen to sync name and personality to your account.</string>

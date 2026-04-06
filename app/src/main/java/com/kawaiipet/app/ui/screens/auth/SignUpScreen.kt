@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -20,12 +23,14 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -33,6 +38,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.kawaiipet.app.R
 import com.kawaiipet.app.ui.auth.AuthEmailViewModel
+import com.kawaiipet.app.ui.auth.AuthFormErrorBanner
+import com.kawaiipet.app.ui.auth.toAuthUserMessage
 import com.kawaiipet.app.ui.navigation.AuthRoutes
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,13 +49,20 @@ fun SignUpScreen(
     onAuthenticated: () -> Unit,
     viewModel: AuthEmailViewModel = hiltViewModel(),
 ) {
+    val context = LocalContext.current
+    val resources = context.resources
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
-    var errorText by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var confirmError by remember { mutableStateOf<String?>(null) }
+    var formError by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground,
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.auth_signup_title)) },
@@ -57,6 +71,11 @@ fun SignUpScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         },
     ) { padding ->
@@ -79,47 +98,82 @@ fun SignUpScreen(
                 value = email,
                 onValueChange = {
                     email = it
-                    errorText = null
+                    emailError = null
+                    formError = null
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.email)) },
                 singleLine = true,
                 enabled = !busy,
+                isError = emailError != null,
+                supportingText = emailError?.let { msg ->
+                    { Text(msg, color = MaterialTheme.colorScheme.error) }
+                },
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = password,
-                onValueChange = { password = it; errorText = null },
+                onValueChange = {
+                    password = it
+                    passwordError = null
+                    formError = null
+                },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.password)) },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
                 enabled = !busy,
+                isError = passwordError != null,
+                supportingText = passwordError?.let { msg ->
+                    { Text(msg, color = MaterialTheme.colorScheme.error) }
+                },
             )
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = confirmPassword,
-                onValueChange = { confirmPassword = it; errorText = null },
+                onValueChange = {
+                    confirmPassword = it
+                    confirmError = null
+                    formError = null
+                },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.confirm_password)) },
                 visualTransformation = PasswordVisualTransformation(),
                 singleLine = true,
                 enabled = !busy,
+                isError = confirmError != null,
+                supportingText = confirmError?.let { msg ->
+                    { Text(msg, color = MaterialTheme.colorScheme.error) }
+                },
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(20.dp))
+
+            AuthFormErrorBanner(message = formError)
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
-                    errorText = null
+                    formError = null
+                    emailError = null
+                    passwordError = null
+                    confirmError = null
+
                     when {
-                        email.isBlank() || password.isBlank() -> {
-                            errorText = "Enter email and password"
+                        email.isBlank() -> {
+                            emailError = context.getString(R.string.auth_error_required_email)
+                        }
+                        password.isBlank() -> {
+                            passwordError = context.getString(R.string.auth_error_required_password)
+                        }
+                        confirmPassword.isBlank() -> {
+                            confirmError = context.getString(R.string.auth_error_required_confirm)
                         }
                         password != confirmPassword -> {
-                            errorText = "Passwords do not match"
+                            confirmError = context.getString(R.string.auth_error_password_mismatch)
                         }
                         password.length < 6 -> {
-                            errorText = "Use at least 6 characters"
+                            passwordError = context.getString(R.string.auth_error_password_too_short)
                         }
                         else -> {
                             busy = true
@@ -127,7 +181,9 @@ fun SignUpScreen(
                                 busy = false
                                 result.fold(
                                     onSuccess = { onAuthenticated() },
-                                    onFailure = { errorText = it.message ?: it.toString() },
+                                    onFailure = {
+                                        formError = it.toAuthUserMessage(resources)
+                                    },
                                 )
                             }
                         }
@@ -135,19 +191,21 @@ fun SignUpScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                ),
                 enabled = !busy,
             ) {
-                Text(stringResource(R.string.auth_action_create_account))
-            }
-
-            errorText?.let { err ->
-                Spacer(modifier = Modifier.height(12.dp))
-                Text(
-                    text = err,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                )
+                if (busy) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                } else {
+                    Text(stringResource(R.string.auth_action_create_account))
+                }
             }
 
             Spacer(modifier = Modifier.height(24.dp))

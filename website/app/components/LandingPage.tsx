@@ -2,6 +2,7 @@
 
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { StoreDownloadButtons } from "./StoreDownloadButtons";
+import { WaitlistForm } from "./WaitlistForm";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
@@ -113,9 +114,11 @@ export function LandingPage({ apkHref, githubUrl }: LandingPageProps) {
             A calm, playful companion on Android—chat, customize, and keep them on screen while you go about your day.
           </motion.p>
 
+          <WaitlistForm motionIndex={2} />
+
           <motion.div
             id="download"
-            custom={2}
+            custom={3}
             variants={fadeUp}
             initial="hidden"
             animate="show"
